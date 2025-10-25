@@ -21,6 +21,8 @@ export default function BottomNav() {
                 className={`flex flex-col items-center rounded-xl px-3 py-1 ${active ? 'text-blue-600' : 'text-gray-600'}`}>
                 <span aria-hidden>{i.icon}</span><span>{i.label}</span>
               </Link>
+              youness
+              rachid
             </li>
           )
         })}
