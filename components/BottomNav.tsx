@@ -22,6 +22,7 @@ export default function BottomNav() {
                 <span aria-hidden>{i.icon}</span><span>{i.label}</span>
               </Link>
               youness
+              rachid
             </li>
           )
         })}
