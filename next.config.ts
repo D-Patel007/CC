@@ -1,10 +1,8 @@
-// next.config.ts
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
-  },
+  // Next 15: prisma must remain external so its engines load correctly
+  serverExternalPackages: ['@prisma/client', 'prisma'],
 };
 
 export default nextConfig;
