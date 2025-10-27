@@ -1,44 +1,12 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
-}
-
-model User {
-  id        Int       @id @default(autoincrement())
-  name      String
-  email     String    @unique
-  createdAt DateTime  @default(now())
-  listings  Listing[]
-  messages  Message[] @relation("UserMessages")
-}
-
-model Category {
-  id       Int       @id @default(autoincrement())
-  name     String    @unique
-  slug     String    @unique
-  listings Listing[]
-}
-
-model Listing {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String
-  priceCents  Int
-  imageUrl    String?
-  condition   Condition @default(USED)
-  campus      String    @default("UMass Boston")
-  isSold      Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-
-  sellerId   Int
-  seller     User      @relation(fields: [sellerId], references: [id])
-  categoryId Int
-  category   Category  @relation(fields: [categoryId], references: [id])
-  messages   Message[]
+  url      = env("DATABASE_URL") // e.g. file:./dev.db
 }
 
 enum Condition {
@@ -49,14 +17,17 @@ enum Condition {
   USED
 }
 
-model Message {
-  id        Int      @id @default(autoincrement())
-  body      String
-  createdAt DateTime @default(now())
+model Listing {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  imageUrl    String?
+  category    String?
+  condition   Condition @default(GOOD)
+  priceCents  Int
+  sellerId    String
+  createdAt   DateTime  @default(now())
 
-  listingId Int
-  listing   Listing  @relation(fields: [listingId], references: [id])
-
-  senderId  Int
-  sender    User     @relation("UserMessages", fields: [senderId], references: [id])
+  @@index([createdAt])
+  @@index([category])
 }
