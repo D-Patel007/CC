@@ -8,3 +8,6 @@ prisma/dev.db
 .DS_Store
 Thumbs.db
 *.log
+.env.local
+/app/generated/
+/prisma/dev.db
