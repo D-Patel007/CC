@@ -1,7 +1,6 @@
-// app/page.tsx
-import Link from "next/link"
 import { prisma } from "@/lib/db"
 import CategoryTabs from "@/components/CategoryTabs"
+import ListingCard from "@/components/ListingCard"
 
 type Search = { category?: string | null }
 
@@ -21,6 +20,7 @@ export default async function Marketplace({ searchParams }: { searchParams?: Sea
     category?: string | null
     priceCents?: number | null
     price?: number | null
+    condition?: string | null
   }[] = []
 
   try {
@@ -48,9 +48,9 @@ export default async function Marketplace({ searchParams }: { searchParams?: Sea
 
   return (
     <main className="mx-auto max-w-5xl p-6">
-      <header className="mb-2">
-        <h1 className="text-2xl font-semibold">Campus Connect</h1>
-        <p className="text-sm text-gray-500">For Beacons, by Beacons</p>
+      <header className="mb-4">
+        <h1 className="text-3xl font-bold">Campus Connect</h1>
+        <p className="mt-1 text-sm text-gray-500">For Beacons, by Beacons</p>
       </header>
 
       {/* Category filter writes ?category=... in the URL */}
@@ -59,30 +59,12 @@ export default async function Marketplace({ searchParams }: { searchParams?: Sea
       {filtered.length === 0 ? (
         <p className="text-gray-600">No listings found.</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((l) => {
-            const img = l.imageUrl && l.imageUrl.trim() !== "" ? l.imageUrl : "/no-image.svg"
-            const price =
-              typeof l.priceCents === "number"
-                ? (l.priceCents ?? 0) / 100
-                : (l.price ?? 0)
-
-            return (
-              <li key={String(l.id)} className="rounded-xl border hover:bg-gray-50">
-                <Link href={`/listings/${l.id}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt={l.title} className="h-48 w-full rounded-t-xl object-cover" />
-                  <div className="space-y-1 p-3">
-                    <div className="line-clamp-1 font-medium">{l.title}</div>
-                    {typeof (l as any).category === "string" && (l as any).category ? (
-                      <div className="text-xs text-gray-500">{(l as any).category}</div>
-                    ) : null}
-                    <div className="font-semibold">${Number(price).toFixed(2)}</div>
-                  </div>
-                </Link>
-              </li>
-            )
-          })}
+        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 list-none">
+          {filtered.map((listing) => (
+            <li key={String(listing.id)}>
+              <ListingCard listing={listing} />
+            </li>
+          ))}
         </ul>
       )}
     </main>
