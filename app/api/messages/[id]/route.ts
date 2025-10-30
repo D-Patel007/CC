@@ -89,10 +89,16 @@ export async function POST(
       return NextResponse.json({ error: "Invalid conversation ID" }, { status: 400 })
     }
 
-    const { content } = await req.json()
+    const body = await req.json()
+    const { content, messageType = 'TEXT', mediaUrl } = body
     
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
-      return NextResponse.json({ error: "Message content is required" }, { status: 400 })
+    // Validate based on message type
+    if (messageType === 'TEXT' && (!content || typeof content !== 'string' || content.trim().length === 0)) {
+      return NextResponse.json({ error: "Message content is required for text messages" }, { status: 400 })
+    }
+    
+    if ((messageType === 'PHOTO' || messageType === 'VOICE') && !mediaUrl) {
+      return NextResponse.json({ error: "Media URL is required for photo/voice messages" }, { status: 400 })
     }
 
     // Verify user is part of this conversation
@@ -121,7 +127,9 @@ export async function POST(
         conversationId,
         senderId: profile.id,
         receiverId,
-        content: content.trim()
+        content: content?.trim() || '',
+        messageType: messageType as any,
+        mediaUrl: mediaUrl || null
       },
       include: {
         sender: { select: { id: true, name: true, avatarUrl: true } }

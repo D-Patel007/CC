@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import { useRealtimeMessages } from "@/lib/hooks/useRealtimeMessages"
+import { useSearchParams } from "next/navigation"
 
 type Conversation = {
   id: number
@@ -18,11 +19,23 @@ type Conversation = {
 }
 
 export default function MessagesPage() {
+  const searchParams = useSearchParams()
+  const conversationParam = searchParams.get('conversation')
+  
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null)
   const [newMessage, setNewMessage] = useState("")
   const [sending, setSending] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   
   const { messages, loading: messagesLoading } = useRealtimeMessages(selectedConversationId)
 
@@ -33,10 +46,18 @@ export default function MessagesPage() {
       .then(data => {
         if (data.data) {
           setConversations(data.data)
+          
+          // Auto-select conversation from URL parameter
+          if (conversationParam) {
+            const convId = parseInt(conversationParam)
+            if (!isNaN(convId) && data.data.some((c: Conversation) => c.id === convId)) {
+              setSelectedConversationId(convId)
+            }
+          }
         }
       })
       .catch(console.error)
-  }, [])
+  }, [conversationParam])
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -62,6 +83,174 @@ export default function MessagesPage() {
     } finally {
       setSending(false)
     }
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !selectedConversationId) return
+
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file)
+    setSelectedPhoto(file)
+    setPhotoPreview(previewUrl)
+  }
+
+  async function sendPhoto() {
+    if (!selectedPhoto || !selectedConversationId) return
+
+    setUploading(true)
+    try {
+      // Upload file
+      const formData = new FormData()
+      formData.append('file', selectedPhoto)
+      formData.append('type', 'photo')
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      const uploadData = await uploadRes.json()
+
+      if (!uploadData.data?.url) {
+        throw new Error('Failed to upload photo')
+      }
+
+      // Send message with photo URL
+      const res = await fetch(`/api/messages/${selectedConversationId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: '',
+          messageType: 'PHOTO',
+          mediaUrl: uploadData.data.url
+        })
+      })
+
+      if (res.ok) {
+        // Clear preview and selection
+        cancelPhoto()
+      }
+    } catch (error) {
+      console.error('Photo upload failed:', error)
+      alert('Failed to send photo')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function cancelPhoto() {
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview)
+    }
+    setSelectedPhoto(null)
+    setPhotoPreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      
+      const chunks: Blob[] = []
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data)
+        }
+      }
+      
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' })
+        setAudioBlob(blob)
+        stream.getTracks().forEach(track => track.stop())
+      }
+      
+      mediaRecorder.start()
+      setIsRecording(true)
+      setRecordingTime(0)
+      
+      // Update recording time every second
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1)
+      }, 1000)
+    } catch (error) {
+      console.error('Failed to start recording:', error)
+      alert('Failed to access microphone. Please grant permission.')
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current)
+      }
+    }
+  }
+
+  async function sendVoiceMessage() {
+    if (!audioBlob || !selectedConversationId) return
+
+    setUploading(true)
+    try {
+      // Create a File object from the Blob
+      const audioFile = new File([audioBlob], `voice-${Date.now()}.webm`, { type: 'audio/webm' })
+      
+      // Upload file
+      const formData = new FormData()
+      formData.append('file', audioFile)
+      formData.append('type', 'voice')
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      const uploadData = await uploadRes.json()
+
+      if (!uploadData.data?.url) {
+        throw new Error('Failed to upload voice message')
+      }
+
+      // Send message with audio URL
+      const res = await fetch(`/api/messages/${selectedConversationId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: '',
+          messageType: 'VOICE',
+          mediaUrl: uploadData.data.url
+        })
+      })
+
+      if (res.ok) {
+        cancelVoiceMessage()
+      }
+    } catch (error) {
+      console.error('Voice message upload failed:', error)
+      alert('Failed to send voice message')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function cancelVoiceMessage() {
+    setAudioBlob(null)
+    setRecordingTime(0)
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current)
+    }
+  }
+
+  // Format recording time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
   return (
@@ -149,7 +338,20 @@ export default function MessagesPage() {
                           <div className={`max-w-[70%] rounded-lg p-3 ${
                             isOwn ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'
                           }`}>
-                            <p className="text-sm">{msg.content}</p>
+                            {/* Display based on message type */}
+                            {msg.messageType === 'PHOTO' && msg.mediaUrl && (
+                              <img 
+                                src={msg.mediaUrl} 
+                                alt="Photo message" 
+                                className="rounded max-w-full h-auto mb-2"
+                              />
+                            )}
+                            {msg.messageType === 'VOICE' && msg.mediaUrl && (
+                              <audio controls className="mb-2 max-w-full">
+                                <source src={msg.mediaUrl} />
+                              </audio>
+                            )}
+                            {msg.content && <p className="text-sm">{msg.content}</p>}
                             <p className={`text-xs mt-1 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
                               {new Date(msg.createdAt).toLocaleTimeString([], { 
                                 hour: '2-digit', 
@@ -165,23 +367,131 @@ export default function MessagesPage() {
                 )}
               </div>
 
+              {/* Photo Preview */}
+              {photoPreview && (
+                <div className="p-4 border-t bg-gray-50">
+                  <div className="flex items-end gap-3">
+                    <div className="relative">
+                      <img 
+                        src={photoPreview} 
+                        alt="Preview" 
+                        className="max-h-32 rounded-lg border-2 border-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={cancelPhoto}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={sendPhoto}
+                      disabled={uploading}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {uploading ? 'Sending...' : 'Send Photo'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Voice Recording Preview */}
+              {audioBlob && !isRecording && (
+                <div className="p-4 border-t bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <audio controls src={URL.createObjectURL(audioBlob)} className="flex-1" />
+                    <button
+                      type="button"
+                      onClick={cancelVoiceMessage}
+                      className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={sendVoiceMessage}
+                      disabled={uploading}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {uploading ? 'Sending...' : 'Send Voice'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Recording Indicator */}
+              {isRecording && (
+                <div className="p-4 border-t bg-red-50">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-1">
+                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                      <span className="text-red-600 font-medium">Recording... {formatTime(recordingTime)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={stopRecording}
+                      className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                    >
+                      Stop
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Input */}
               <form onSubmit={sendMessage} className="p-4 border-t">
                 <div className="flex gap-2">
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  
+                  {/* Photo upload button */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading || sending || isRecording}
+                    className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    title="Send photo"
+                  >
+                    📷
+                  </button>
+
+                  {/* Voice recording button */}
+                  <button
+                    type="button"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={uploading || sending}
+                    className={`px-4 py-2 rounded-lg border transition ${
+                      isRecording 
+                        ? 'bg-red-100 border-red-300 hover:bg-red-200' 
+                        : 'border-gray-300 hover:bg-gray-50'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    title={isRecording ? "Stop recording" : "Record voice message"}
+                  >
+                    🎤
+                  </button>
+                  
                   <input
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
+                    placeholder={uploading ? "Uploading..." : isRecording ? "Recording..." : "Type a message..."}
                     className="flex-1 rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={sending}
+                    disabled={sending || uploading || isRecording}
                   />
                   <button
                     type="submit"
-                    disabled={!newMessage.trim() || sending}
+                    disabled={!newMessage.trim() || sending || uploading || isRecording}
                     className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
-                    {sending ? 'Sending...' : 'Send'}
+                    {sending ? 'Sending...' : uploading ? 'Uploading...' : 'Send'}
                   </button>
                 </div>
               </form>

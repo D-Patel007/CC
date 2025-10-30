@@ -8,6 +8,8 @@ type Message = {
   senderId: number
   receiverId: number
   content: string
+  messageType: 'TEXT' | 'PHOTO' | 'VOICE'
+  mediaUrl: string | null
   isRead: boolean
   createdAt: string
   sender: {

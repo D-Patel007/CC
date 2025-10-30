@@ -1,172 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
-
   provider = "postgresql"
-
   url      = env("DATABASE_URL")
-
 }
-
-
-
-generator client {
-
-  provider = "prisma-client-js"
-
-}
-
-
 
 model Profile {
-
-  id         Int            @id @default(autoincrement())
-
-  supabaseId String?        @unique
-
-  name       String?
-
-  avatarUrl  String?
-
-  listings   Listing[]
-
-  sentMessages     Message[] @relation("SentMessages")
-
-  receivedMessages Message[] @relation("ReceivedMessages")
-
+  id               Int            @id @default(autoincrement())
+  supabaseId       String?        @unique
+  name             String?
+  avatarUrl        String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  year             String?
+  major            String?
+  bio              String?
   conversations1   Conversation[] @relation("User1Conversations")
-
   conversations2   Conversation[] @relation("User2Conversations")
-
-  createdAt  DateTime       @default(now())
-
-  updatedAt  DateTime       @updatedAt
-
+  listings         Listing[]
+  receivedMessages Message[]      @relation("ReceivedMessages")
+  sentMessages     Message[]      @relation("SentMessages")
+  events           Event[]        @relation("OrganizedEvents")
+  eventAttendees   EventAttendee[]
 }
-
-
 
 model Category {
-
   id       Int       @id @default(autoincrement())
-
   name     String
-
   slug     String    @unique
-
   listings Listing[]
-
 }
-
-
 
 model Listing {
-
   id          Int       @id @default(autoincrement())
-
   title       String
-
   description String
-
   priceCents  Int
-
   condition   Condition @default(GOOD)
-
   imageUrl    String?
-
   campus      String?
-
   isSold      Boolean   @default(false)
-
   sellerId    Int
-
-  seller      Profile   @relation(fields: [sellerId], references: [id])
-
   categoryId  Int?
-
-  category    Category? @relation(fields: [categoryId], references: [id])
-
   createdAt   DateTime  @default(now())
-
   updatedAt   DateTime  @updatedAt
-
+  category    Category? @relation(fields: [categoryId], references: [id])
+  seller      Profile   @relation(fields: [sellerId], references: [id])
 }
-
-
-
-enum Condition {
-
-  NEW
-
-  LIKE_NEW
-
-  GOOD
-
-  FAIR
-
-  POOR
-
-}
-
-
 
 model Conversation {
-
-  id        Int      @id @default(autoincrement())
-
+  id        Int       @id @default(autoincrement())
   user1Id   Int
-
   user2Id   Int
-
-  user1     Profile  @relation("User1Conversations", fields: [user1Id], references: [id], onDelete: Cascade)
-
-  user2     Profile  @relation("User2Conversations", fields: [user2Id], references: [id], onDelete: Cascade)
-
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user1     Profile   @relation("User1Conversations", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2     Profile   @relation("User2Conversations", fields: [user2Id], references: [id], onDelete: Cascade)
   messages  Message[]
 
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  
-
   @@unique([user1Id, user2Id])
-
   @@index([user1Id])
-
   @@index([user2Id])
-
 }
 
-
-
 model Message {
-
   id             Int          @id @default(autoincrement())
-
   conversationId Int
-
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
   senderId       Int
-
+  receiverId     Int
+  content        String
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  messageType    MessageType  @default(TEXT)
+  mediaUrl       String?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  receiver       Profile      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
   sender         Profile      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
-  receiverId     Int
-
-  receiver       Profile      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-
-  content        String
-
-  isRead         Boolean      @default(false)
-
-  createdAt      DateTime     @default(now())
-
-  
-
   @@index([conversationId])
-
   @@index([senderId])
-
   @@index([receiverId])
+}
 
+enum Condition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+  POOR
+}
+
+enum MessageType {
+  TEXT
+  PHOTO
+  VOICE
+}
+
+model Event {
+  id          Int             @id @default(autoincrement())
+  title       String
+  description String
+  eventDate   DateTime
+  startTime   String
+  endTime     String?
+  location    String
+  imageUrl    String?
+  capacity    Int?
+  category    String?
+  organizerId Int
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  organizer   Profile         @relation("OrganizedEvents", fields: [organizerId], references: [id], onDelete: Cascade)
+  attendees   EventAttendee[]
+
+  @@index([organizerId])
+  @@index([eventDate])
+}
+
+model EventAttendee {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  userId    Int
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
 }

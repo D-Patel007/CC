@@ -20,10 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <a href="/" className="hover:underline">Marketplace</a>
                 <a href="/events" className="hover:underline">Events</a>
                 <a href="/messages" className="hover:underline">Messages</a>
-                <div className="relative group">
-                  <button className="hover:underline">Post</button>
-                  {/* Potential dropdown - left as placeholder */}
-                </div>
+                <a href="/listings/new" className="hover:underline">Post</a>
                 <a href="/profile" className="hover:underline">Profile</a>
               </nav>
             </div>

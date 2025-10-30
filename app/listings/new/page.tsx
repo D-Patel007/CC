@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation"
 import { sbServer } from "@/lib/supabase/server"
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/lib/db"
 import ListingForm from "@/components/ListingForm"
 
 export default async function NewListingPage() {
-  const supabase = sbServer()
+  const supabase = await sbServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
