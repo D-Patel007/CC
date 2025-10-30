@@ -6,7 +6,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL") // e.g. file:./dev.db
+  url      = env("DATABASE_URL")
 }
 
 enum Condition {
@@ -17,17 +17,48 @@ enum Condition {
   USED
 }
 
+model User {
+  id          String    @id @default(cuid())
+  supabaseId  String?   @unique
+  email       String?   @unique
+  name        String?
+  avatarUrl   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  listings    Listing[]
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  listings  Listing[]
+
+  @@unique([name])
+}
+
 model Listing {
-  id          Int       @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   title       String
   description String
   imageUrl    String?
-  category    String?
-  condition   Condition @default(GOOD)
   priceCents  Int
+  condition   Condition  @default(GOOD)
+  isSold      Boolean    @default(false)
+  soldAt      DateTime?
+  campus      String?    @default("UMass Boston")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @default(now()) @updatedAt
+
   sellerId    String
-  createdAt   DateTime  @default(now())
+  seller      User       @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  categoryId  Int?
+  category    Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
-  @@index([category])
+  @@index([categoryId])
+  @@index([sellerId])
 }

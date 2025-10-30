@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server"
+import { Condition, Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
-import { sbServer } from "@/lib/supabase/server"
+import { getCurrentUser } from "@/lib/auth"
 
 // CREATE a listing
 export async function POST(req: Request) {
   try {
-    const supabase = sbServer()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { supabaseUser, profile } = await getCurrentUser()
+    if (!supabaseUser || !profile) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
@@ -15,10 +15,21 @@ export async function POST(req: Request) {
 
     const title = String(body.title ?? "").trim()
     const description = String(body.description ?? "").trim()
-    const priceCents = Math.round(Number(body.price) * 100) || 0
-    const category = body.category ? String(body.category) : null
-    const condition = (body.condition ? String(body.condition) : "GOOD").toUpperCase()
+    const rawPrice =
+      body.priceCents !== undefined && body.priceCents !== null
+        ? Math.round(Number(body.priceCents))
+        : Math.round(Number(body.price) * 100)
+    const priceCents = Number.isFinite(rawPrice) ? rawPrice : 0
+    const categoryId = body.categoryId ? Number(body.categoryId) : null
+    const conditionInput = (body.condition ? String(body.condition) : "GOOD").toUpperCase()
+    const condition =
+      Object.values(Condition).includes(conditionInput as Condition)
+        ? (conditionInput as Condition)
+        : Condition.GOOD
     const imageUrl = body.imageUrl ? String(body.imageUrl).trim() : null
+    const campusValue =
+      typeof body.campus === "string" ? body.campus.trim() : undefined
+    const campus = campusValue ? campusValue : undefined
 
     if (!title || !description || priceCents <= 0) {
       return NextResponse.json(
@@ -27,15 +38,31 @@ export async function POST(req: Request) {
       )
     }
 
+    if (categoryId && Number.isNaN(categoryId)) {
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 })
+    }
+
+    if (categoryId) {
+      const exists = await prisma.category.findUnique({ where: { id: categoryId } })
+      if (!exists) {
+        return NextResponse.json({ error: "Category not found" }, { status: 400 })
+      }
+    }
+
     const listing = await prisma.listing.create({
       data: {
         title,
         description,
         priceCents,
-        category,
-        condition,   // e.g. NEW / LIKE_NEW / GOOD / FAIR / USED
+        categoryId: categoryId ?? undefined,
+        condition,
         imageUrl,
-        sellerId: user.id,
+        campus,
+        sellerId: profile.id,
+      },
+      include: {
+        category: true,
+        seller: { select: { id: true, name: true, avatarUrl: true } },
       },
     })
 
@@ -54,14 +81,44 @@ export async function GET(req: Request) {
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 50)
     const skip = (page - 1) * limit
 
-    const where: any = {}
+    const where: Prisma.ListingWhereInput = {}
     const q = searchParams.get("q")
     const category = searchParams.get("category")
-    if (q) where.title = { contains: q, mode: "insensitive" }
-    if (category) where.category = category
+    const status = searchParams.get("status")?.toLowerCase()
+    if (q) {
+      where.OR = [
+        { title: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+      ]
+    }
+    if (category) {
+      where.category = {
+        OR: [
+          { name: { equals: category, mode: "insensitive" } },
+          { slug: { equals: category.toLowerCase() } },
+        ],
+      }
+    }
+
+    if (status === "active") {
+      where.isSold = false
+    } else if (status === "sold") {
+      where.isSold = true
+    }
 
     const [items, total] = await Promise.all([
-      prisma.listing.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: limit }),
+      prisma.listing.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        include: {
+          category: true,
+          seller: {
+            select: { id: true, name: true, avatarUrl: true },
+          },
+        },
+      }),
       prisma.listing.count({ where }),
     ])
 

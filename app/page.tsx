@@ -21,12 +21,18 @@ export default async function Marketplace({ searchParams }: { searchParams?: Sea
     priceCents?: number | null
     price?: number | null
     condition?: string | null
+    isSold?: boolean
+    campus?: string | null
+    soldAt?: Date | null
   }[] = []
 
   try {
     listings = await prisma.listing.findMany({
       orderBy: { createdAt: "desc" },
       take: 30,
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+      },
     })
   } catch (err) {
     // If Prisma fails for any reason, render a friendly message (no crash)
@@ -43,7 +49,19 @@ export default async function Marketplace({ searchParams }: { searchParams?: Sea
   // In-memory filter by category (safe even if `category` field doesn’t exist)
   const filtered =
     selected && selected !== "All"
-      ? listings.filter((l: any) => (l?.category || "").toLowerCase() === selected.toLowerCase())
+      ? listings.filter((l: any) => {
+          if (!l?.category) return false
+          if (typeof l.category === "string") {
+            return l.category.toLowerCase() === selected.toLowerCase()
+          }
+          if (typeof l.category?.name === "string") {
+            if (l.category.name.toLowerCase() === selected.toLowerCase()) return true
+          }
+          if (typeof l.category?.slug === "string") {
+            return l.category.slug.toLowerCase() === selected.toLowerCase()
+          }
+          return false
+        })
       : listings
 
   return (

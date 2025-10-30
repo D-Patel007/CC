@@ -4,8 +4,16 @@ const prisma = new PrismaClient()
 async function main() {
   const user = await prisma.user.upsert({
     where: { email: 'demo@umb.edu' },
-    update: {},
-    create: { name: 'Demo User', email: 'demo@umb.edu' },
+    update: {
+      name: 'Demo User',
+      avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4',
+    },
+    create: {
+      supabaseId: 'demo-supabase-user',
+      name: 'Demo User',
+      email: 'demo@umb.edu',
+      avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4',
+    },
   })
 
   const [furniture, electronics, books, clothing] = await Promise.all([
@@ -21,6 +29,7 @@ async function main() {
       { title: 'MacBook Air M1 8/256', description: 'Great battery, includes charger.', priceCents: 55000, imageUrl: '', condition: 'LIKE_NEW', sellerId: user.id, categoryId: electronics.id },
       { title: 'Discrete Math Textbook', description: 'Highlighting in a few chapters.', priceCents: 2500, imageUrl: '', condition: 'USED', sellerId: user.id, categoryId: books.id },
     ],
+    skipDuplicates: true,
   })
 }
 
