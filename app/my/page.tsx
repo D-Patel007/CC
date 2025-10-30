@@ -1,9 +1,21 @@
-import { prisma } from '../../lib/db'
+
+import { redirect } from 'next/navigation'
+import { prisma } from '@/lib/db'
+import { getCurrentUser } from '@/lib/auth'
 
 export default async function MyListingsPage() {
+  const { profile } = await getCurrentUser()
+
+  if (!profile) {
+    redirect('/login')
+  }
+
   const listings = await prisma.listing.findMany({
-    where: { sellerId: 1 }, // TODO: use session user
+    where: { sellerId: profile.id },
     orderBy: { createdAt: 'desc' },
+    include: {
+      category: true,
+    },
   })
 
   return (
@@ -17,6 +29,7 @@ export default async function MyListingsPage() {
               <div className="font-medium">{l.title}</div>
               <div className="text-sm text-gray-500">
                 ${(l.priceCents / 100).toFixed(2)} • {l.isSold ? 'Sold' : 'Active'}
+                {l.category?.name ? ` • ${l.category?.name}` : ''}
               </div>
             </div>
 

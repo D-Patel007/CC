@@ -1,111 +1,207 @@
-import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { sbServer } from "@/lib/supabase/server";
-import { z } from "zod";
+import { NextRequest, NextResponse } from 'next/server'
+import { Condition, Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { getCurrentUser } from '@/lib/auth'
 
-const prisma = new PrismaClient();
-
-const CreateListingSchema = z.object({
-  title: z.string().min(1).max(160),
-  description: z.string().default(""),
-  imageUrl: z.string().url().optional().or(z.literal("")).transform(v => v || null),
-  // allow either priceCents or price (in dollars)
-  priceCents: z.number().int().nonnegative().optional(),
-  price: z.number().nonnegative().optional(),
-  // prefer categoryId (Int). If you only have slugs client-side, send categorySlug instead.
-  categoryId: z.number().int().positive().optional(),
-  categorySlug: z.string().min(1).optional(),
-  condition: z.enum(["NEW", "LIKE_NEW", "GOOD", "USED"]).default("USED"),
-  campus: z.string().default("UMass Boston"),
-});
-
-export async function GET() {
-  const listings = await prisma.listing.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      seller: { select: { id: true, name: true, email: true } },
-      // include category if you want it in responses:
-      // category: { select: { id: true, name: true, slug: true } },
-    },
-  });
-  return NextResponse.json(listings);
+function parseCondition(value: unknown) {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.toUpperCase()
+  return Object.values(Condition).includes(normalized as Condition)
+    ? (normalized as Condition)
+    : undefined
 }
 
-export async function POST(req: Request) {
-  try {
-    // 1) Auth
-    const supabase = sbServer();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    // 2) Map Supabase → local User
-    const localUser = await prisma.user.upsert({
-      where: { supabaseId: user.id },
-      update: {},
-      create: {
-        supabaseId: user.id,
-        email: user.email ?? `no-email-${user.id}@example.local`,
-        name: (user.user_metadata as any)?.full_name ?? "User",
-      },
-    });
-
-    // 3) Validate body
-    const json = await req.json();
-    const parsed = CreateListingSchema.safeParse(json);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: parsed.error.flatten() },
-        { status: 400 }
-      );
-    }
-
-    const data = parsed.data;
-
-    // 4) Compute priceCents
-    const priceCents =
-      typeof data.priceCents === "number"
-        ? data.priceCents
-        : typeof data.price === "number"
-          ? Math.round(data.price * 100)
-          : null;
-
-    if (priceCents == null) {
-      return NextResponse.json(
-        { error: "priceCents or price is required" },
-        { status: 400 }
-      );
-    }
-
-    // 5) Resolve category
-    let categoryId: number | null = null;
-    if (typeof data.categoryId === "number") {
-      const cat = await prisma.category.findUnique({ where: { id: data.categoryId } });
-      if (!cat) return NextResponse.json({ error: "Invalid categoryId" }, { status: 400 });
-      categoryId = cat.id;
-    } else if (data.categorySlug) {
-      const cat = await prisma.category.findUnique({ where: { slug: data.categorySlug } });
-      if (!cat) return NextResponse.json({ error: "Invalid categorySlug" }, { status: 400 });
-      categoryId = cat.id;
-    }
-
-    // 6) Create listing
-    const created = await prisma.listing.create({
-      data: {
-        title: data.title,
-        description: data.description,
-        imageUrl: data.imageUrl ?? null,
-        condition: data.condition,
-        campus: data.campus,
-        priceCents,
-        sellerId: localUser.id,
-        ...(categoryId ? { categoryId } : {}),
-      },
-    });
-
-    return NextResponse.json(created, { status: 201 });
-  } catch (err) {
-    console.error("POST /api/listings error:", err);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+function parseBoolean(value: unknown) {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value === 1
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (['true', '1', 'yes', 'on'].includes(normalized)) return true
+    if (['false', '0', 'no', 'off', ''].includes(normalized)) return false
   }
+  return undefined
 }
 
+async function ensureOwner(listingId: number) {
+  const { profile } = await getCurrentUser()
+  if (!profile) {
+    return {
+      response: NextResponse.json({ error: 'Not authenticated' }, { status: 401 }),
+    }
+  }
+
+  const listing = await prisma.listing.findUnique({ where: { id: listingId } })
+  if (!listing) {
+    return {
+      response: NextResponse.json({ error: 'Not found' }, { status: 404 }),
+    }
+  }
+
+  if (listing.sellerId !== profile.id) {
+    return {
+      response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }),
+    }
+  }
+
+  return { listing, profile }
+}
+
+async function applyUpdate(listingId: number, payload: Record<string, unknown>) {
+  const auth = await ensureOwner(listingId)
+  if ('response' in auth) return auth.response
+
+  const data: Prisma.ListingUpdateInput = {}
+
+  if (typeof payload.title === 'string') {
+    const value = payload.title.trim()
+    if (!value) return NextResponse.json({ error: 'Title cannot be empty' }, { status: 400 })
+    data.title = value
+  }
+
+  if (typeof payload.description === 'string') {
+    const value = payload.description.trim()
+    if (!value)
+      return NextResponse.json({ error: 'Description cannot be empty' }, { status: 400 })
+    data.description = value
+  }
+
+  if (typeof payload.imageUrl === 'string') {
+    const trimmed = payload.imageUrl.trim()
+    data.imageUrl = trimmed ? trimmed : null
+  }
+
+  if (payload.priceCents !== undefined) {
+    const priceCents = Math.round(Number(payload.priceCents))
+    if (!Number.isFinite(priceCents) || priceCents <= 0) {
+      return NextResponse.json({ error: 'priceCents must be > 0' }, { status: 400 })
+    }
+    data.priceCents = priceCents
+  } else if (payload.price !== undefined) {
+    const priceCents = Math.round(Number(payload.price) * 100)
+    if (!Number.isFinite(priceCents) || priceCents <= 0) {
+      return NextResponse.json({ error: 'price must be > 0' }, { status: 400 })
+    }
+    data.priceCents = priceCents
+  }
+
+  const condition = parseCondition(payload.condition)
+  if (condition) {
+    data.condition = condition
+  }
+
+  if (typeof payload.campus === 'string') {
+    const trimmed = payload.campus.trim()
+    data.campus = trimmed || null
+  }
+
+  if (payload.categoryId !== undefined) {
+    if (payload.categoryId === null || payload.categoryId === '') {
+      data.category = { disconnect: true }
+    } else {
+      const categoryId = Number(payload.categoryId)
+      if (!Number.isInteger(categoryId)) {
+        return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
+      }
+      const category = await prisma.category.findUnique({ where: { id: categoryId } })
+      if (!category) {
+        return NextResponse.json({ error: 'Category not found' }, { status: 400 })
+      }
+      data.category = { connect: { id: categoryId } }
+    }
+  }
+
+  const markSold = parseBoolean(payload.markSold)
+  const nextSold = markSold !== undefined ? markSold : parseBoolean(payload.isSold)
+  if (nextSold !== undefined) {
+    data.isSold = nextSold
+    data.soldAt = nextSold ? new Date() : null
+  }
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: 'No changes supplied' }, { status: 400 })
+  }
+
+  const listing = await prisma.listing.update({
+    where: { id: listingId },
+    data,
+    include: {
+      category: true,
+      seller: { select: { id: true, name: true, avatarUrl: true } },
+    },
+  })
+
+  return NextResponse.json({ data: listing })
+}
+
+async function applyDelete(listingId: number) {
+  const auth = await ensureOwner(listingId)
+  if ('response' in auth) return auth.response
+
+  await prisma.listing.delete({ where: { id: listingId } })
+  return NextResponse.json({ ok: true })
+}
+
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const id = Number(params.id)
+  if (!Number.isInteger(id)) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
+
+  const listing = await prisma.listing.findUnique({
+    where: { id },
+    include: {
+      category: true,
+      seller: { select: { id: true, name: true, avatarUrl: true } },
+    },
+  })
+  if (!listing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ data: listing })
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const id = Number(params.id)
+  if (!Number.isInteger(id)) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
+  const contentType = req.headers.get('content-type') || ''
+  let payload: Record<string, unknown> = {}
+  if (contentType.includes('application/json')) {
+    payload = await req.json()
+  } else {
+    form.forEach((value, key) => {
+      payload[key] = value
+    })
+  }
+
+  return applyUpdate(id, payload)
+}
+
+export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
+  const form = await req.formData()
+  const method = String(form.get('_method') || '').toUpperCase()
+
+  if (method === 'DELETE') {
+    return DELETE(req, ctx)
+  }
+  const id = Number(ctx.params.id)
+  if (!Number.isInteger(id)) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
+
+  const payload: Record<string, unknown> = {}
+  form.forEach((value, key) => {
+    if (key !== '_method') {
+      payload[key] = value
+    }
+  })
+  return applyUpdate(id, payload)
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const id = Number(params.id)
+  if (!Number.isInteger(id)) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
+
+  return applyDelete(id)
+}

@@ -1,60 +1,172 @@
-generator client {
-  provider = "prisma-client-js"
-}
 
 datasource db {
-  provider = "sqlite" // keep for now; we can switch to Postgres later
+
+  provider = "postgresql"
+
   url      = env("DATABASE_URL")
+
 }
 
-model User {
-  id         Int       @id @default(autoincrement())
-  name       String
-  email      String    @unique
-  supabaseId String?   @unique // NEW: link to Supabase auth.users.id (UUID text)
-  createdAt  DateTime  @default(now())
-  listings   Listing[]
-  messages   Message[] @relation("UserMessages")
+
+
+generator client {
+
+  provider = "prisma-client-js"
+
 }
+
+
+
+model Profile {
+
+  id         Int            @id @default(autoincrement())
+
+  supabaseId String?        @unique
+
+  name       String?
+
+  avatarUrl  String?
+
+  listings   Listing[]
+
+  sentMessages     Message[] @relation("SentMessages")
+
+  receivedMessages Message[] @relation("ReceivedMessages")
+
+  conversations1   Conversation[] @relation("User1Conversations")
+
+  conversations2   Conversation[] @relation("User2Conversations")
+
+  createdAt  DateTime       @default(now())
+
+  updatedAt  DateTime       @updatedAt
+
+}
+
+
 
 model Category {
+
   id       Int       @id @default(autoincrement())
+
   name     String
+
   slug     String    @unique
+
   listings Listing[]
+
 }
+
+
 
 model Listing {
-  id          Int      @id @default(autoincrement())
+
+  id          Int       @id @default(autoincrement())
+
   title       String
+
   description String
+
   priceCents  Int
+
+  condition   Condition @default(GOOD)
+
   imageUrl    String?
-  condition   String   @default("USED")
-  campus      String   @default("UMass Boston")
-  isSold      Boolean  @default(false)
-  createdAt   DateTime @default(now())
 
-  // relations
-  sellerId Int
-  seller   User @relation(fields: [sellerId], references: [id])
+  campus      String?
 
-  // if you have category fields, keep them here (categoryId/category)
+  isSold      Boolean   @default(false)
 
-  // NEW: back-relation for Message.listing
-  messages   Message[]
-  Category   Category? @relation(fields: [categoryId], references: [id])
-  categoryId Int?
+  sellerId    Int
+
+  seller      Profile   @relation(fields: [sellerId], references: [id])
+
+  categoryId  Int?
+
+  category    Category? @relation(fields: [categoryId], references: [id])
+
+  createdAt   DateTime  @default(now())
+
+  updatedAt   DateTime  @updatedAt
+
 }
 
-model Message {
+
+
+enum Condition {
+
+  NEW
+
+  LIKE_NEW
+
+  GOOD
+
+  FAIR
+
+  POOR
+
+}
+
+
+
+model Conversation {
+
   id        Int      @id @default(autoincrement())
-  body      String
+
+  user1Id   Int
+
+  user2Id   Int
+
+  user1     Profile  @relation("User1Conversations", fields: [user1Id], references: [id], onDelete: Cascade)
+
+  user2     Profile  @relation("User2Conversations", fields: [user2Id], references: [id], onDelete: Cascade)
+
+  messages  Message[]
+
   createdAt DateTime @default(now())
 
-  listingId Int
-  listing   Listing @relation(fields: [listingId], references: [id])
+  updatedAt DateTime @updatedAt
 
-  senderId Int
-  sender   User @relation("UserMessages", fields: [senderId], references: [id])
+  
+
+  @@unique([user1Id, user2Id])
+
+  @@index([user1Id])
+
+  @@index([user2Id])
+
+}
+
+
+
+model Message {
+
+  id             Int          @id @default(autoincrement())
+
+  conversationId Int
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId       Int
+
+  sender         Profile      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  receiverId     Int
+
+  receiver       Profile      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  content        String
+
+  isRead         Boolean      @default(false)
+
+  createdAt      DateTime     @default(now())
+
+  
+
+  @@index([conversationId])
+
+  @@index([senderId])
+
+  @@index([receiverId])
+
 }

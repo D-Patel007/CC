@@ -24,7 +24,7 @@ export default function AuthCallback() {
 
       // Exchange the code in the URL for a session (sets cookies)
       if (code) {
-        await supabase.auth.exchangeCodeForSession({ code })
+        await supabase.auth.exchangeCodeForSession(code)
       }
 
       router.replace(next)

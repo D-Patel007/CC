@@ -1,26 +1,58 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
 
-// GET /api/users  -> list users
+// GET /api/users  -> list users with their listing counts
 export async function GET() {
-  const users = await prisma.user.findMany();
-  return NextResponse.json(users);
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: { listings: true },
+      },
+    },
+  })
+
+  return NextResponse.json({ data: users })
 }
+
 
 // POST /api/users  -> create a user { name, email }
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { name, email } = body;
+    const body = await req.json()
+    const { name, email, avatarUrl, supabaseId } = body ?? {}
+    
 
-    if (!name || !email) {
-      return NextResponse.json({ error: 'name and email are required' }, { status: 400 });
+    if (!email && !supabaseId) {
+      return NextResponse.json(
+        { error: 'Either email or supabaseId must be provided' },
+        { status: 400 }
+      )
     }
 
-    const user = await prisma.user.create({ data: { name, email } });
-    return NextResponse.json(user, { status: 201 });
+    const where = supabaseId
+      ? { supabaseId: String(supabaseId) }
+      : { email: String(email) }
+
+    const user = await prisma.user.upsert({
+      where,
+      update: {
+        name: typeof name === 'string' ? name : undefined,
+        email: email ? String(email) : undefined,
+        avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : undefined,
+        supabaseId: supabaseId ? String(supabaseId) : undefined,
+      },
+      create: {
+        name: typeof name === 'string' ? name : null,
+        email: email ? String(email) : null,
+        avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
+        supabaseId: supabaseId ? String(supabaseId) : null,
+      },
+    })
+
+    return NextResponse.json({ data: user }, { status: 201 })
   } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    console.error('POST /api/users failed:', err)
+    return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
