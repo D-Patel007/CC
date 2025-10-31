@@ -152,7 +152,7 @@ export default function EventsPage() {
             onClick={() => setFilter("upcoming")}
             className={`px-4 py-2 rounded-lg transition ${
               filter === "upcoming"
-                ? "bg-primary text-white shadow-subtle"
+                ? "border border-primary bg-primary/15 text-foreground dark:border-transparent dark:bg-primary dark:text-white shadow-subtle"
                 : "border border-border bg-[var(--background-secondary)] text-foreground-secondary hover:text-foreground"
             }`}
           >
@@ -162,7 +162,7 @@ export default function EventsPage() {
             onClick={() => setFilter("all")}
             className={`px-4 py-2 rounded-lg transition ${
               filter === "all"
-                ? "bg-primary text-white shadow-subtle"
+                ? "border border-primary bg-primary/15 text-foreground dark:border-transparent dark:bg-primary dark:text-white shadow-subtle"
                 : "border border-border bg-[var(--background-secondary)] text-foreground-secondary hover:text-foreground"
             }`}
           >
@@ -175,7 +175,7 @@ export default function EventsPage() {
             onClick={() => setSourceFilter("all")}
             className={`px-4 py-2 rounded-lg transition text-sm ${
               sourceFilter === "all"
-                ? "bg-primary text-white shadow-subtle"
+                ? "border border-primary bg-primary/15 text-foreground dark:border-transparent dark:bg-primary dark:text-white shadow-subtle"
                 : "border border-border bg-[var(--background-secondary)] text-foreground-secondary hover:text-foreground"
             }`}
           >
@@ -185,7 +185,7 @@ export default function EventsPage() {
             onClick={() => setSourceFilter("official")}
             className={`px-4 py-2 rounded-lg transition text-sm ${
               sourceFilter === "official"
-                ? "bg-success text-white shadow-subtle"
+                ? "border border-success bg-success/15 text-foreground dark:border-transparent dark:bg-success dark:text-white shadow-subtle"
                 : "border border-border bg-[var(--background-secondary)] text-foreground-secondary hover:text-foreground"
             }`}
           >
@@ -195,7 +195,7 @@ export default function EventsPage() {
             onClick={() => setSourceFilter("community")}
             className={`px-4 py-2 rounded-lg transition text-sm ${
               sourceFilter === "community"
-                ? "bg-primary text-white shadow-subtle"
+                ? "border border-primary bg-primary/15 text-foreground dark:border-transparent dark:bg-primary dark:text-white shadow-subtle"
                 : "border border-border bg-[var(--background-secondary)] text-foreground-secondary hover:text-foreground"
             }`}
           >

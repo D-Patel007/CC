@@ -23,8 +23,8 @@ export default function CategoryTabs() {
             key={c}
             onClick={() => setCategory(c)}
             className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-              selected.toLowerCase() === c.toLowerCase() 
-                ? 'bg-primary text-white shadow-subtle' 
+              selected.toLowerCase() === c.toLowerCase()
+                ? 'border border-primary bg-primary/15 text-foreground dark:border-transparent dark:bg-primary dark:text-white shadow-subtle'
                 : 'border border-border bg-[var(--background-secondary)] text-foreground-secondary hover:text-foreground hover:border-primary'
             }`}
           >
