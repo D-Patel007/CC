@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useRef } from "react"
+import { Suspense, useState, useEffect, useRef } from "react"
 import { useRealtimeMessages } from "@/lib/hooks/useRealtimeMessages"
 import { useSearchParams } from "next/navigation"
 
@@ -18,7 +18,7 @@ type Conversation = {
   unreadCount: number
 }
 
-export default function MessagesPage() {
+function MessagesPageInner() {
   const searchParams = useSearchParams()
   const conversationParam = searchParams.get('conversation')
   
@@ -36,6 +36,7 @@ export default function MessagesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null)
   
   const { messages, loading: messagesLoading } = useRealtimeMessages(selectedConversationId)
 
@@ -246,6 +247,25 @@ export default function MessagesPage() {
     }
   }
 
+  async function unsendMessage(messageId: number) {
+    if (!confirm('Are you sure you want to unsend this message?')) return
+
+    try {
+      const res = await fetch(`/api/messages/${messageId}`, {
+        method: 'DELETE'
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to unsend message')
+      }
+
+      // Message will be removed via realtime update
+    } catch (error) {
+      console.error('Failed to unsend message:', error)
+      alert('Failed to unsend message')
+    }
+  }
+
   // Format recording time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -254,44 +274,44 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl h-[calc(100vh-120px)]">
-      <div className="grid grid-cols-3 gap-4 h-full">
+    <div className="w-full h-full flex flex-col">
+      <div className="grid grid-cols-3 gap-4 flex-1 min-h-0">
         {/* Conversations List */}
-        <div className="col-span-1 bg-white rounded-xl border overflow-y-auto">
-          <div className="p-4 border-b">
-            <h2 className="text-xl font-bold">Messages</h2>
+        <div className="col-span-1 bg-[var(--card-bg)] rounded-xl border border-border flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-border flex-shrink-0">
+            <h2 className="text-xl font-bold text-foreground">Messages</h2>
           </div>
           
           {conversations.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-foreground-secondary overflow-y-auto">
               <p>No conversations yet</p>
               <p className="text-sm mt-2">Start chatting by viewing a listing</p>
             </div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y divide-border overflow-y-auto flex-1">
               {conversations.map((conv) => (
                 <button
                   key={conv.id}
                   onClick={() => setSelectedConversationId(conv.id)}
-                  className={`w-full p-4 text-left hover:bg-gray-50 transition ${
-                    selectedConversationId === conv.id ? 'bg-blue-50' : ''
+                  className={`w-full p-4 text-left hover:bg-[var(--background-elevated)] transition ${
+                    selectedConversationId === conv.id ? 'bg-primary/10' : ''
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0">
                       {(conv.otherUser.name || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className="font-semibold truncate">{conv.otherUser.name || 'User'}</p>
+                        <p className="font-semibold truncate text-foreground">{conv.otherUser.name || 'User'}</p>
                         {conv.unreadCount > 0 && (
-                          <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-1">
+                          <span className="bg-primary text-white text-xs rounded-full px-2 py-1">
                             {conv.unreadCount}
                           </span>
                         )}
                       </div>
                       {conv.lastMessage && (
-                        <p className="text-sm text-gray-500 truncate">
+                        <p className="text-sm text-foreground-secondary truncate">
                           {conv.lastMessage.content}
                         </p>
                       )}
@@ -304,9 +324,9 @@ export default function MessagesPage() {
         </div>
 
         {/* Messages Thread */}
-        <div className="col-span-2 bg-white rounded-xl border flex flex-col">
+        <div className="col-span-2 bg-[var(--card-bg)] rounded-xl border border-border flex flex-col">
           {!selectedConversation ? (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
+            <div className="flex-1 flex items-center justify-center text-foreground-secondary">
               <div className="text-center">
                 <p className="text-lg">Select a conversation to start messaging</p>
               </div>
@@ -314,50 +334,67 @@ export default function MessagesPage() {
           ) : (
             <>
               {/* Header */}
-              <div className="p-4 border-b flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+              <div className="p-4 border-b border-border flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
                   {(selectedConversation.otherUser.name || 'U').charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h3 className="font-semibold">{selectedConversation.otherUser.name || 'User'}</h3>
+                  <h3 className="font-semibold text-foreground">{selectedConversation.otherUser.name || 'User'}</h3>
                 </div>
               </div>
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messagesLoading ? (
-                  <div className="text-center text-gray-500">Loading messages...</div>
+                  <div className="text-center text-foreground-secondary">Loading messages...</div>
                 ) : messages.length === 0 ? (
-                  <div className="text-center text-gray-500">No messages yet. Start the conversation!</div>
+                  <div className="text-center text-foreground-secondary">No messages yet. Start the conversation!</div>
                 ) : (
                   <>
                     {messages.map((msg) => {
                       const isOwn = msg.sender.id !== selectedConversation.otherUser.id
                       return (
-                        <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[70%] rounded-lg p-3 ${
-                            isOwn ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'
-                          }`}>
-                            {/* Display based on message type */}
-                            {msg.messageType === 'PHOTO' && msg.mediaUrl && (
-                              <img 
-                                src={msg.mediaUrl} 
-                                alt="Photo message" 
-                                className="rounded max-w-full h-auto mb-2"
-                              />
+                        <div 
+                          key={msg.id} 
+                          className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}
+                          onMouseEnter={() => setHoveredMessageId(msg.id)}
+                          onMouseLeave={() => setHoveredMessageId(null)}
+                        >
+                          <div className="relative">
+                            <div className={`max-w-[70%] rounded-lg p-3 ${
+                              isOwn ? 'bg-primary text-white' : 'bg-[var(--background-elevated)] text-foreground'
+                            }`}>
+                              {/* Display based on message type */}
+                              {msg.messageType === 'PHOTO' && msg.mediaUrl && (
+                                <img 
+                                  src={msg.mediaUrl} 
+                                  alt="Photo message" 
+                                  className="rounded max-w-full h-auto mb-2"
+                                />
+                              )}
+                              {msg.messageType === 'VOICE' && msg.mediaUrl && (
+                                <audio controls className="mb-2 max-w-full">
+                                  <source src={msg.mediaUrl} />
+                                </audio>
+                              )}
+                              {msg.content && <p className="text-sm">{msg.content}</p>}
+                              <p className={`text-xs mt-1 ${isOwn ? 'text-white/80' : 'text-foreground-secondary'}`}>
+                                {new Date(msg.createdAt).toLocaleTimeString([], { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })}
+                              </p>
+                            </div>
+                            {/* Unsend button - only show for own messages on hover */}
+                            {isOwn && hoveredMessageId === msg.id && (
+                              <button
+                                onClick={() => unsendMessage(msg.id)}
+                                className="absolute -left-20 top-1/2 -translate-y-1/2 text-xs text-foreground-secondary hover:text-error px-2 py-1 rounded hover:bg-[var(--background-elevated)] transition"
+                                title="Unsend message"
+                              >
+                                Unsend
+                              </button>
                             )}
-                            {msg.messageType === 'VOICE' && msg.mediaUrl && (
-                              <audio controls className="mb-2 max-w-full">
-                                <source src={msg.mediaUrl} />
-                              </audio>
-                            )}
-                            {msg.content && <p className="text-sm">{msg.content}</p>}
-                            <p className={`text-xs mt-1 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
-                              {new Date(msg.createdAt).toLocaleTimeString([], { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
-                            </p>
                           </div>
                         </div>
                       )
@@ -441,7 +478,7 @@ export default function MessagesPage() {
               )}
 
               {/* Input */}
-              <form onSubmit={sendMessage} className="p-4 border-t">
+              <form onSubmit={sendMessage} className="p-4 border-t dark:border-gray-700">
                 <div className="flex gap-2">
                   {/* Hidden file input */}
                   <input
@@ -457,10 +494,13 @@ export default function MessagesPage() {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading || sending || isRecording}
-                    className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    className="px-4 py-2 rounded-lg border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                     title="Send photo"
                   >
-                    📷
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
                   </button>
 
                   {/* Voice recording button */}
@@ -470,12 +510,14 @@ export default function MessagesPage() {
                     disabled={uploading || sending}
                     className={`px-4 py-2 rounded-lg border transition ${
                       isRecording 
-                        ? 'bg-red-100 border-red-300 hover:bg-red-200' 
-                        : 'border-gray-300 hover:bg-gray-50'
+                        ? 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900/50' 
+                        : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                     title={isRecording ? "Stop recording" : "Record voice message"}
                   >
-                    🎤
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
                   </button>
                   
                   <input
@@ -483,7 +525,7 @@ export default function MessagesPage() {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder={uploading ? "Uploading..." : isRecording ? "Recording..." : "Type a message..."}
-                    className="flex-1 rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 rounded-lg border dark:border-gray-700 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
                     disabled={sending || uploading || isRecording}
                   />
                   <button
@@ -500,5 +542,19 @@ export default function MessagesPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-[60vh] place-items-center p-8 text-foreground-secondary">
+          <p>Loading messages…</p>
+        </main>
+      }
+    >
+      <MessagesPageInner />
+    </Suspense>
   )
 }

@@ -1,43 +1,75 @@
 import "./globals.css"
 import UserButton from "@/components/UserButton"
+import Footer from "@/components/Footer"
+import ThemeToggle from "@/components/ThemeToggle"
+import ClientProviders from "@/components/ClientProviders"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-slate-50">
-        {/* Header (always visible) */}
-        <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-4">
-              <a href="/" className="flex items-center gap-3">
-                <img src="/logo.png" alt="Campus Connect" className="w-12 h-12 rounded-lg" />
-                <div className="font-semibold text-lg">
-                  <div>Campus Connect</div>
-                  <div className="text-xs text-gray-500">For Beacons, by Beacons</div>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                if (theme === 'dark') {
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.classList.remove('light');
+                } else {
+                  document.documentElement.classList.add('light');
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-screen bg-background text-foreground flex flex-col transition-colors">
+        <ClientProviders>
+          {/* Header (always visible) */}
+          <header className="sticky top-0 z-10 border-b border-border bg-[var(--background-elevated)] backdrop-blur">
+            <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 text-foreground">
+              <div className="flex items-center gap-4">
+                <a href="/" className="flex items-center gap-3">
+                  <img src="/logo.png" alt="Campus Connect" className="w-12 h-12 rounded-lg shadow-subtle" />
+                  <div className="font-semibold text-lg">
+                    <div className="text-foreground">Campus Connect</div>
+                    <div className="text-xs text-foreground-secondary">For Beacons, by Beacons</div>
+                  </div>
+                </a>
+                <nav className="hidden md:flex items-center gap-4 ml-6 text-sm text-foreground-secondary">
+                  <a href="/" className="hover:underline hover:text-primary">Marketplace</a>
+                  <a href="/events" className="hover:underline hover:text-primary">Events</a>
+                  <a href="/messages" className="hover:underline hover:text-primary">Messages</a>
+                  <a href="/my" className="hover:underline hover:text-primary">My Listings</a>
+                  <a href="/listings/new" className="hover:underline hover:text-primary">+ Create</a>
+                  <a href="/profile" className="hover:underline hover:text-primary">Profile</a>
+                </nav>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <ThemeToggle />
+                <div className="hidden sm:block">
+                  <UserButton />
                 </div>
-              </a>
-              <nav className="hidden md:flex items-center gap-4 ml-6 text-sm text-gray-700">
-                <a href="/" className="hover:underline">Marketplace</a>
-                <a href="/events" className="hover:underline">Events</a>
-                <a href="/messages" className="hover:underline">Messages</a>
-                <a href="/listings/new" className="hover:underline">Post</a>
-                <a href="/profile" className="hover:underline">Profile</a>
-              </nav>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:block">
-                <UserButton />
-              </div>
-              <div className="sm:hidden">
-                <a href="/login" className="rounded-full bg-blue-600 px-3 py-1 text-white text-sm">Log in</a>
+                <div className="sm:hidden">
+                  <a href="/login" className="rounded-full bg-primary px-3 py-1 text-white text-sm shadow-subtle hover:bg-primary-hover transition">Log in</a>
+                </div>
               </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {/* Page content */}
-        <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+          {/* Page content */}
+          <main className="flex-1 flex flex-col">
+            <div className="mx-auto max-w-5xl w-full px-4 py-6 flex-1 flex flex-col min-h-0">
+              {children}
+            </div>
+          </main>
+
+          {/* Footer */}
+          <Footer />
+        </ClientProviders>
       </body>
     </html>
   )

@@ -99,24 +99,27 @@ enum MessageType {
 }
 
 model Event {
-  id          Int             @id @default(autoincrement())
-  title       String
-  description String
-  eventDate   DateTime
-  startTime   String
-  endTime     String?
-  location    String
-  imageUrl    String?
-  capacity    Int?
-  category    String?
-  organizerId Int
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  organizer   Profile         @relation("OrganizedEvents", fields: [organizerId], references: [id], onDelete: Cascade)
-  attendees   EventAttendee[]
+  id             Int             @id @default(autoincrement())
+  title          String
+  description    String
+  eventDate      DateTime
+  startTime      String
+  endTime        String?
+  location       String
+  imageUrl       String?
+  capacity       Int?
+  category       String?
+  organizerId    Int
+  isExternal     Boolean         @default(false)
+  externalSource String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organizer      Profile         @relation("OrganizedEvents", fields: [organizerId], references: [id], onDelete: Cascade)
+  attendees      EventAttendee[]
 
   @@index([organizerId])
   @@index([eventDate])
+  @@index([isExternal])
 }
 
 model EventAttendee {

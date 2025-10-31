@@ -9,8 +9,9 @@ function slugify(input: string) {
     .replace(/^-+|-+$/g, '')
 }
 
-export async function PATCH(req: Request, context: { params: { id: string } }) {
-  const id = Number(context.params.id)
+export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await context.params
+  const id = Number(rawId)
   if (!Number.isInteger(id)) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
@@ -42,13 +43,14 @@ export async function PATCH(req: Request, context: { params: { id: string } }) {
 
     return NextResponse.json({ data: category })
   } catch (error) {
-    console.error(`PATCH /api/categories/${context.params.id} failed:`, error)
+    console.error(`PATCH /api/categories/${rawId} failed:`, error)
     return NextResponse.json({ error: 'Failed to update category' }, { status: 500 })
   }
 }
 
-export async function DELETE(_req: Request, context: { params: { id: string } }) {
-  const id = Number(context.params.id)
+export async function DELETE(_req: Request, context: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await context.params
+  const id = Number(rawId)
   if (!Number.isInteger(id)) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
@@ -57,7 +59,7 @@ export async function DELETE(_req: Request, context: { params: { id: string } })
     await prisma.category.delete({ where: { id } })
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error(`DELETE /api/categories/${context.params.id} failed:`, error)
+    console.error(`DELETE /api/categories/${rawId} failed:`, error)
     return NextResponse.json({ error: 'Failed to delete category' }, { status: 500 })
   }
 }

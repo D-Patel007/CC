@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
+import { sanitizeString, validateDate, validateInteger, checkRateLimit } from "@/lib/validation"
 
 // GET /api/events - List all events
 export async function GET(req: NextRequest) {
@@ -37,7 +38,8 @@ export async function GET(req: NextRequest) {
             userId: true
           }
         }
-      }
+      },
+      take: 100 // Limit to prevent too many results
     })
     
     // Add attendee count to each event
@@ -60,6 +62,11 @@ export async function POST(req: NextRequest) {
     if (!profile) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
+
+    // Rate limiting: 5 events per hour per user
+    if (!checkRateLimit(`event-create:${profile.id}`, 5, 3600000)) {
+      return NextResponse.json({ error: "Too many events created. Please try again later." }, { status: 429 })
+    }
     
     const body = await req.json()
     const {
@@ -74,24 +81,66 @@ export async function POST(req: NextRequest) {
       category
     } = body
     
-    if (!title || !description || !eventDate || !startTime || !location) {
+    // Validate required fields
+    const sanitizedTitle = sanitizeString(title, 200)
+    const sanitizedDescription = sanitizeString(description, 2000)
+    const sanitizedLocation = sanitizeString(location, 300)
+    
+    if (!sanitizedTitle || !sanitizedDescription || !sanitizedLocation) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing or invalid required fields" },
         { status: 400 }
       )
+    }
+
+    // Validate date
+    const validatedDate = validateDate(eventDate)
+    if (!validatedDate) {
+      return NextResponse.json({ error: "Invalid event date" }, { status: 400 })
+    }
+
+    // Ensure event is not in the past
+    if (validatedDate < new Date()) {
+      return NextResponse.json({ error: "Event date must be in the future" }, { status: 400 })
+    }
+
+    // Validate time format (HH:MM)
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
+    if (!startTime || !timeRegex.test(startTime)) {
+      return NextResponse.json({ error: "Invalid start time format" }, { status: 400 })
+    }
+
+    if (endTime && !timeRegex.test(endTime)) {
+      return NextResponse.json({ error: "Invalid end time format" }, { status: 400 })
+    }
+
+    // Validate capacity
+    let validatedCapacity = null
+    if (capacity) {
+      validatedCapacity = validateInteger(capacity, 1, 10000)
+      if (validatedCapacity === null) {
+        return NextResponse.json({ error: "Invalid capacity value" }, { status: 400 })
+      }
+    }
+
+    // Validate category
+    const allowedCategories = ["Academic", "Social", "Sports", "Arts & Culture", "Professional", "Community Service", "Other"]
+    const sanitizedCategory = category ? sanitizeString(category, 50) : null
+    if (sanitizedCategory && !allowedCategories.includes(sanitizedCategory)) {
+      return NextResponse.json({ error: "Invalid category" }, { status: 400 })
     }
     
     const event = await prisma.event.create({
       data: {
-        title,
-        description,
-        eventDate: new Date(eventDate),
+        title: sanitizedTitle,
+        description: sanitizedDescription,
+        eventDate: validatedDate,
         startTime,
         endTime: endTime || null,
-        location,
-        imageUrl: imageUrl || null,
-        capacity: capacity ? parseInt(capacity) : null,
-        category: category || null,
+        location: sanitizedLocation,
+        imageUrl: imageUrl ? sanitizeString(imageUrl, 500) : null,
+        capacity: validatedCapacity,
+        category: sanitizedCategory,
         organizerId: profile.id
       },
       include: {

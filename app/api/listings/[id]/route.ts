@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Condition, Prisma } from '@prisma/client'
+import { type Prisma } from '@prisma/client'
+
+// Define Condition enum manually since it's not exported by Prisma Client
+enum Condition {
+  NEW = 'NEW',
+  LIKE_NEW = 'LIKE_NEW',
+  GOOD = 'GOOD',
+  FAIR = 'FAIR',
+  POOR = 'POOR'
+}
 import { prisma } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 
@@ -91,7 +100,9 @@ async function applyUpdate(listingId: number, payload: Record<string, unknown>) 
 
   if (typeof payload.campus === 'string') {
     const trimmed = payload.campus.trim()
-    data.campus = trimmed || null
+    if (trimmed) {
+      data.campus = trimmed
+    }
   }
 
   if (payload.categoryId !== undefined) {
@@ -114,7 +125,6 @@ async function applyUpdate(listingId: number, payload: Record<string, unknown>) 
   const nextSold = markSold !== undefined ? markSold : parseBoolean(payload.isSold)
   if (nextSold !== undefined) {
     data.isSold = nextSold
-    data.soldAt = nextSold ? new Date() : null
   }
 
   if (Object.keys(data).length === 0) {
@@ -126,7 +136,7 @@ async function applyUpdate(listingId: number, payload: Record<string, unknown>) 
     data,
     include: {
       category: true,
-      seller: { select: { id: true, name: true, avatarUrl: true } },
+      seller: { select: { id: true, name: true } },
     },
   })
 
@@ -141,8 +151,9 @@ async function applyDelete(listingId: number) {
   return NextResponse.json({ ok: true })
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const id = Number(params.id)
+export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await context.params
+  const id = Number(rawId)
   if (!Number.isInteger(id)) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
@@ -151,15 +162,16 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     where: { id },
     include: {
       category: true,
-      seller: { select: { id: true, name: true, avatarUrl: true } },
+      seller: { select: { id: true, name: true } },
     },
   })
   if (!listing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json({ data: listing })
+  return NextResponse.json({ data: listing })
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const id = Number(params.id)
+export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await context.params
+  const id = Number(rawId)
   if (!Number.isInteger(id)) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
@@ -168,6 +180,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (contentType.includes('application/json')) {
     payload = await req.json()
   } else {
+    const form = await req.formData()
     form.forEach((value, key) => {
       payload[key] = value
     })
@@ -176,14 +189,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   return applyUpdate(id, payload)
 }
 
-export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
+export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const form = await req.formData()
   const method = String(form.get('_method') || '').toUpperCase()
 
   if (method === 'DELETE') {
     return DELETE(req, ctx)
   }
-  const id = Number(ctx.params.id)
+  const { id: rawId } = await ctx.params
+  const id = Number(rawId)
   if (!Number.isInteger(id)) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
@@ -197,8 +211,9 @@ export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
   return applyUpdate(id, payload)
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const id = Number(params.id)
+export async function DELETE(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await context.params
+  const id = Number(rawId)
   if (!Number.isInteger(id)) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }

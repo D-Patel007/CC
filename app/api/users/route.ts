@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
-// GET /api/users  -> list users with their listing counts
+// GET /api/users  -> list users (profiles) with their listing counts
 export async function GET() {
-  const users = await prisma.user.findMany({
+  const users = await prisma.profile.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
       _count: {
@@ -16,37 +16,29 @@ export async function GET() {
 }
 
 
-// POST /api/users  -> create a user { name, email }
+// POST /api/users  -> create or update a profile { name, avatarUrl, supabaseId }
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { name, email, avatarUrl, supabaseId } = body ?? {}
-    
+    const { name, avatarUrl, supabaseId } = body ?? {}
 
-    if (!email && !supabaseId) {
+    if (!supabaseId || typeof supabaseId !== 'string') {
       return NextResponse.json(
-        { error: 'Either email or supabaseId must be provided' },
+        { error: 'supabaseId is required to create or update a profile' },
         { status: 400 }
       )
     }
 
-    const where = supabaseId
-      ? { supabaseId: String(supabaseId) }
-      : { email: String(email) }
-
-    const user = await prisma.user.upsert({
-      where,
+    const user = await prisma.profile.upsert({
+      where: { supabaseId },
       update: {
         name: typeof name === 'string' ? name : undefined,
-        email: email ? String(email) : undefined,
         avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : undefined,
-        supabaseId: supabaseId ? String(supabaseId) : undefined,
       },
       create: {
+        supabaseId,
         name: typeof name === 'string' ? name : null,
-        email: email ? String(email) : null,
         avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
-        supabaseId: supabaseId ? String(supabaseId) : null,
       },
     })
 

@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth"
 // GET /api/messages/[id] - Get all messages in a conversation
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { profile } = await getCurrentUser()
@@ -13,7 +13,8 @@ export async function GET(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    const conversationId = parseInt(params.id)
+    const { id } = await context.params
+    const conversationId = parseInt(id)
     if (isNaN(conversationId)) {
       return NextResponse.json({ error: "Invalid conversation ID" }, { status: 400 })
     }
@@ -76,7 +77,7 @@ export async function GET(
 // POST /api/messages/[id] - Send a message in a conversation
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { profile } = await getCurrentUser()
@@ -84,7 +85,8 @@ export async function POST(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    const conversationId = parseInt(params.id)
+    const { id } = await context.params
+    const conversationId = parseInt(id)
     if (isNaN(conversationId)) {
       return NextResponse.json({ error: "Invalid conversation ID" }, { status: 400 })
     }
@@ -150,5 +152,48 @@ export async function POST(
   } catch (err: any) {
     console.error("POST /api/messages/[id] error:", err)
     return NextResponse.json({ error: "Failed to send message" }, { status: 500 })
+  }
+}
+
+// DELETE /api/messages/[id] - Delete/unsend a message
+export async function DELETE(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { profile } = await getCurrentUser()
+    if (!profile) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    }
+
+    const { id } = await context.params
+    const messageId = parseInt(id)
+    if (isNaN(messageId)) {
+      return NextResponse.json({ error: "Invalid message ID" }, { status: 400 })
+    }
+
+    // Find the message and verify ownership
+    const message = await prisma.message.findUnique({
+      where: { id: messageId }
+    })
+
+    if (!message) {
+      return NextResponse.json({ error: "Message not found" }, { status: 404 })
+    }
+
+    // Only allow sender to delete their own messages
+    if (message.senderId !== profile.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+    }
+
+    // Delete the message
+    await prisma.message.delete({
+      where: { id: messageId }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    console.error("DELETE /api/messages/[id] error:", err)
+    return NextResponse.json({ error: "Failed to delete message" }, { status: 500 })
   }
 }

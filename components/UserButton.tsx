@@ -21,15 +21,9 @@ export default function UserButton() {
       <div className="flex items-center gap-2">
         <a
           href="/login"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-subtle hover:bg-primary-hover transition"
         >
-          Log in
-        </a>
-        <a
-          href="/signup"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          Sign up
+          Log in / Sign up
         </a>
       </div>
     )
@@ -37,10 +31,10 @@ export default function UserButton() {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-gray-700">Hi, {user.name}</span>
+      <span className="text-sm text-foreground-secondary">Hi, {user.name}</span>
       <button
         onClick={() => sb().auth.signOut().then(() => location.reload())}
-        className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
+  className="rounded-lg border border-border px-3 py-1 text-sm text-foreground-secondary hover:text-foreground hover:bg-[var(--background-secondary)] transition"
       >
         Sign out
       </button>

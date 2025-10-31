@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { redirect } from "next/navigation"
 import { sb } from "@/lib/supabase/browser"
+import ListingCard from "@/components/ListingCard"
 
 type Profile = {
   id: number
@@ -13,10 +14,29 @@ type Profile = {
   createdAt: string
 }
 
+type Listing = {
+  id: number
+  title: string
+  description: string
+  priceCents: number
+  condition: string
+  imageUrl: string | null
+  isSold: boolean
+  createdAt: string
+  category: {
+    id: number
+    name: string
+  } | null
+  seller: {
+    id: number
+    name: string | null
+  }
+}
+
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [listingsCount, setListingsCount] = useState(0)
+  const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -55,13 +75,13 @@ export default function ProfilePage() {
           bio: data.data.bio || ""
         })
         
-        // Fetch listings count
+        // Fetch all user listings (including sold ones)
         const listingsRes = await fetch('/api/listings')
         const listingsData = await listingsRes.json()
         if (listingsData.data) {
-          // Count only the user's listings
+          // Filter to get only the user's listings (both active and sold)
           const userListings = listingsData.data.filter((l: any) => l.seller.id === data.data.id)
-          setListingsCount(userListings.length)
+          setListings(userListings)
         }
       }
     } catch (error) {
@@ -163,14 +183,14 @@ export default function ProfilePage() {
             <div className="flex gap-2 mt-6">
               <button
                 onClick={() => setShowEditModal(false)}
-                className="flex-1 py-2 border rounded-lg hover:bg-gray-50"
+                className="flex-1 py-2 border border-border rounded-lg hover:bg-[var(--background-elevated)]"
                 disabled={saving}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveProfile}
-                className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50"
                 disabled={saving}
               >
                 {saving ? 'Saving...' : 'Save'}
@@ -183,25 +203,25 @@ export default function ProfilePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile Card */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl border p-6 space-y-4">
+          <div className="bg-[var(--card-bg)] rounded-xl border border-border p-6 space-y-4">
             {/* Avatar */}
             <div className="flex flex-col items-center">
-              <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-3xl font-bold text-blue-600">
+              <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-3xl font-bold text-primary">
                 {name.charAt(0).toUpperCase()}
               </div>
               <h2 className="mt-3 text-xl font-semibold">{name}</h2>
-              <p className="text-sm text-gray-500">@{email.split("@")[0]}</p>
+              <p className="text-sm text-foreground-secondary">@{email.split("@")[0]}</p>
             </div>
 
             {/* Stats */}
             <div className="flex justify-center gap-8 py-4">
               <div className="text-center">
-                <div className="text-2xl font-bold">{listingsCount}</div>
-                <div className="text-sm text-gray-500">Listings</div>
+                <div className="text-2xl font-bold">{listings.length}</div>
+                <div className="text-sm text-foreground-secondary">Listings</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">5</div>
-                <div className="text-sm text-gray-500">Saved</div>
+                <div className="text-2xl font-bold">{listings.filter(l => l.isSold).length}</div>
+                <div className="text-sm text-foreground-secondary">Sold</div>
               </div>
             </div>
 
@@ -209,36 +229,36 @@ export default function ProfilePage() {
             <div className="space-y-2">
               <button
                 onClick={() => setShowEditModal(true)}
-                className="w-full py-2 border rounded-lg hover:bg-gray-50"
+                className="w-full py-2 border border-border rounded-lg hover:bg-[var(--background-elevated)]"
               >
                 Edit Profile
               </button>
               <form action="/auth/signout" method="post">
-                <button className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <button className="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary-hover">
                   Logout
                 </button>
               </form>
             </div>
 
             {/* Additional Info */}
-            <div className="pt-4 border-t space-y-2 text-sm">
+            <div className="pt-4 border-t border-border space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-500">Year</span>
+                <span className="text-foreground-secondary">Year</span>
                 <span className="font-medium">{profile.year || "Not set"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Major</span>
+                <span className="text-foreground-secondary">Major</span>
                 <span className="font-medium">{profile.major || "Not set"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Member Since</span>
+                <span className="text-foreground-secondary">Member Since</span>
                 <span className="font-medium">
                   {new Date(profile.createdAt).getFullYear()}
                 </span>
               </div>
               {profile.bio && (
                 <div className="pt-2">
-                  <span className="text-gray-500 block mb-1">Bio</span>
+                  <span className="text-foreground-secondary block mb-1">Bio</span>
                   <p className="text-sm">{profile.bio}</p>
                 </div>
               )}
@@ -249,10 +269,20 @@ export default function ProfilePage() {
         {/* My Listings */}
         <div className="lg:col-span-2">
           <h2 className="text-2xl font-bold mb-4">My Listings</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Listings will be rendered here - placeholder for now */}
-            <p className="text-gray-500 col-span-2">Your listings will appear here.</p>
-          </div>
+          {listings.length === 0 ? (
+            <div className="text-center py-12 text-foreground-secondary bg-[var(--card-bg)] rounded-xl border border-border">
+              <p>You haven't created any listings yet.</p>
+              <a href="/listings/new" className="inline-block mt-4 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-hover transition">
+                Create Your First Listing
+              </a>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {listings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

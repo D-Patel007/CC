@@ -17,12 +17,16 @@ export default function CategoryTabs() {
 
   return (
     <div className="mb-6 flex items-center justify-between">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         {CATEGORIES.map((c) => (
           <button
             key={c}
             onClick={() => setCategory(c)}
-            className={`rounded-full px-4 py-2 text-sm transition ${selected.toLowerCase() === c.toLowerCase() ? 'bg-blue-600 text-white' : 'bg-white border text-gray-700'}`}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+              selected.toLowerCase() === c.toLowerCase() 
+                ? 'bg-primary text-white shadow-subtle' 
+                : 'border border-border bg-[var(--background-secondary)] text-foreground-secondary hover:text-foreground hover:border-primary'
+            }`}
           >
             {c}
           </button>
@@ -37,7 +41,7 @@ export default function CategoryTabs() {
             else q.set('sort', e.target.value)
             router.push(`/?${q.toString()}`)
           }}
-          className="rounded-xl border px-3 py-2 text-sm"
+          className="rounded-xl border border-border bg-[var(--input-bg)] px-3 py-2 text-sm text-foreground"
         >
           <option value="recent">Most Recent</option>
           <option value="price_low">Price (low to high)</option>

@@ -7,12 +7,42 @@ type ListingWithCategory = Listing & { category: Category | null }
 
 export const dynamic = "force-dynamic"
 
-export default async function Marketplace() {
+export default async function Marketplace({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const params = await searchParams
+  const categoryFilter = params.category as string | undefined
+  const sortBy = params.sort as string | undefined
+
   let listings: ListingWithCategory[] = []
 
   try {
+    // Build the where clause for filtering
+    const whereClause: any = {}
+    
+    // Filter by category if specified and not "All"
+    if (categoryFilter && categoryFilter.toLowerCase() !== "all") {
+      whereClause.category = {
+        name: {
+          equals: categoryFilter,
+          mode: "insensitive" as const,
+        },
+      }
+    }
+
+    // Build the orderBy clause for sorting
+    let orderBy: any = { createdAt: "desc" }
+    if (sortBy === "price_low") {
+      orderBy = { priceCents: "asc" }
+    } else if (sortBy === "price_high") {
+      orderBy = { priceCents: "desc" }
+    }
+
     listings = await prisma.listing.findMany({
-      orderBy: { createdAt: "desc" },
+      where: whereClause,
+      orderBy,
       take: 30,
       include: {
         category: true,
@@ -30,25 +60,40 @@ export default async function Marketplace() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
-      <header className="mb-4">
-        <h1 className="text-3xl font-bold">Marketplace</h1>
-        <p className="mt-1 text-sm text-gray-500">Browse items posted by fellow Beacons.</p>
-      </header>
+    <main className="min-h-screen pb-20">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(129,140,248,0.45),_transparent_60%)]" aria-hidden />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(14,116,144,0.28),_transparent_65%)]" aria-hidden />
+        <div className="relative mx-auto max-w-6xl px-6 py-12 rounded-3xl border border-border bg-[var(--background-elevated)] shadow-float">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-foreground animate-fade-in">
+            UMass Boston Marketplace
+          </h1>
+          <p className="text-lg md:text-xl text-foreground-secondary max-w-2xl">
+            Buy, sell, and trade with fellow Beacons. Discover a modern marketplace tailored to campus life.
+          </p>
+        </div>
+      </section>
 
-      <CategoryTabs />
+      <div className="mx-auto max-w-6xl px-6 py-8">
+        <CategoryTabs />
 
-      {listings.length === 0 ? (
-        <p className="text-gray-600">No listings found.</p>
-      ) : (
-        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 list-none">
-          {listings.map((listing) => (
-            <li key={listing.id}>
-              <ListingCard listing={listing} />
-            </li>
-          ))}
-        </ul>
-      )}
+        {listings.length === 0 ? (
+          <div className="text-center py-16 text-foreground-secondary">
+            <div className="text-6xl mb-4">📦</div>
+            <p className="text-xl text-foreground mb-2">No listings found</p>
+            <p className="text-sm">Be the first to post an item!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mt-6">
+            {listings.map((listing) => (
+              <div key={listing.id} className="animate-fade-in">
+                <ListingCard listing={listing} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </main>
   )
 }
