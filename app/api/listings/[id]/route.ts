@@ -41,12 +41,12 @@ export async function PATCH(
     }
   }
 
-  const updatedListing = await prisma.listing.update({
+  const updated = await prisma.listing.update({
     where: { id: listingId },
     data,
   });
 
-  return NextResponse.json(updatedListing);
+  return NextResponse.json(updated);
 }
 
 // DELETE /api/listings/[id]
