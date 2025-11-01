@@ -8,22 +8,22 @@ datasource db {
 }
 
 model Profile {
-  id               Int            @id @default(autoincrement())
-  supabaseId       String?        @unique
+  id               Int             @id @default(autoincrement())
+  supabaseId       String?         @unique
   name             String?
   avatarUrl        String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   year             String?
   major            String?
   bio              String?
-  conversations1   Conversation[] @relation("User1Conversations")
-  conversations2   Conversation[] @relation("User2Conversations")
-  listings         Listing[]
-  receivedMessages Message[]      @relation("ReceivedMessages")
-  sentMessages     Message[]      @relation("SentMessages")
-  events           Event[]        @relation("OrganizedEvents")
+  conversations1   Conversation[]  @relation("User1Conversations")
+  conversations2   Conversation[]  @relation("User2Conversations")
+  events           Event[]         @relation("OrganizedEvents")
   eventAttendees   EventAttendee[]
+  listings         Listing[]
+  receivedMessages Message[]       @relation("ReceivedMessages")
+  sentMessages     Message[]       @relation("SentMessages")
 }
 
 model Category {
@@ -84,20 +84,6 @@ model Message {
   @@index([receiverId])
 }
 
-enum Condition {
-  NEW
-  LIKE_NEW
-  GOOD
-  FAIR
-  POOR
-}
-
-enum MessageType {
-  TEXT
-  PHOTO
-  VOICE
-}
-
 model Event {
   id             Int             @id @default(autoincrement())
   title          String
@@ -110,10 +96,10 @@ model Event {
   capacity       Int?
   category       String?
   organizerId    Int
-  isExternal     Boolean         @default(false)
-  externalSource String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  externalSource String?
+  isExternal     Boolean         @default(false)
   organizer      Profile         @relation("OrganizedEvents", fields: [organizerId], references: [id], onDelete: Cascade)
   attendees      EventAttendee[]
 
@@ -133,4 +119,18 @@ model EventAttendee {
   @@unique([eventId, userId])
   @@index([eventId])
   @@index([userId])
+}
+
+enum Condition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+  POOR
+}
+
+enum MessageType {
+  TEXT
+  PHOTO
+  VOICE
 }
