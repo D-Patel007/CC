@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
-import { getCurrentUser } from "@/lib/auth"
-import { sanitizeString, validateDate, validateInteger, checkRateLimit } from "@/lib/validation"
+import { sbServer } from "@/lib/supabase/server"
+import { requireAuth, optionalAuth } from "@/lib/auth-middleware"
+import { canModifyEvent, assertOwnership, AuthorizationError } from "@/lib/authorization"
+import { validateRequest, updateEventSchema } from "@/lib/validation-schemas"
+import { rateLimit, RateLimits, getRateLimitIdentifier } from "@/lib/rate-limit"
 
 type RouteParams = {
   params: Promise<{ id: string }>
@@ -10,6 +12,11 @@ type RouteParams = {
 // GET /api/events/[id] - Get event details
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
+    // Rate limiting for reads
+    const rateLimitIdentifier = getRateLimitIdentifier(req, "events:read:id")
+    const rateLimitResponse = rateLimit(rateLimitIdentifier, RateLimits.LENIENT)
+    if (rateLimitResponse) return rateLimitResponse
+
     const { id } = await params
     const eventId = parseInt(id)
     
@@ -17,32 +24,21 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 })
     }
     
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-      include: {
-        organizer: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-            createdAt: true
-          }
-        },
-        attendees: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                avatarUrl: true
-              }
-            }
-          }
-        }
-      }
-    })
+    const supabase = await sbServer()
+    const { data: event, error } = await supabase
+      .from('Event')
+      .select(`
+        *,
+        organizer:Profile!Event_organizerId_fkey(id, name, avatarUrl, createdAt),
+        attendees:EventAttendee(
+          userId,
+          user:Profile!EventAttendee_userId_fkey(id, name, avatarUrl)
+        )
+      `)
+      .eq('id', eventId)
+      .single()
     
-    if (!event) {
+    if (error || !event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
     
@@ -56,10 +52,15 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 // POST /api/events/[id] - RSVP to event
 export async function POST(req: NextRequest, { params }: RouteParams) {
   try {
-    const { profile } = await getCurrentUser()
-    if (!profile) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
-    }
+    // Authentication required for RSVP
+    const authResult = await requireAuth(req)
+    if (authResult instanceof NextResponse) return authResult
+    const { user } = authResult
+
+    // Rate limiting
+    const rateLimitIdentifier = getRateLimitIdentifier(req, "events:rsvp", user.id)
+    const rateLimitResponse = rateLimit(rateLimitIdentifier, RateLimits.MODERATE)
+    if (rateLimitResponse) return rateLimitResponse
     
     const { id } = await params
     const eventId = parseInt(id)
@@ -71,56 +72,65 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const body = await req.json()
     const { action } = body // "rsvp" or "cancel"
     
+    const supabase = await sbServer()
+    
     if (action === "rsvp") {
       // Check if user already RSVPed
-      const existing = await prisma.eventAttendee.findUnique({
-        where: {
-          eventId_userId: {
-            eventId,
-            userId: profile.id
-          }
-        }
-      })
+      const { data: existing } = await supabase
+        .from('EventAttendee')
+        .select('userId')
+        .eq('eventId', eventId)
+        .eq('userId', user.id)
+        .single()
       
       if (existing) {
         return NextResponse.json({ error: "Already RSVPed" }, { status: 400 })
       }
       
       // Check capacity
-      const event = await prisma.event.findUnique({
-        where: { id: eventId },
-        include: {
-          attendees: true
-        }
-      })
+      const { data: event, error: eventError } = await supabase
+        .from('Event')
+        .select(`
+          capacity,
+          attendees:EventAttendee(userId)
+        `)
+        .eq('id', eventId)
+        .single()
       
-      if (!event) {
+      if (eventError || !event) {
         return NextResponse.json({ error: "Event not found" }, { status: 404 })
       }
       
-      if (event.capacity && event.attendees.length >= event.capacity) {
+      if (event.capacity && event.attendees && event.attendees.length >= event.capacity) {
         return NextResponse.json({ error: "Event is at capacity" }, { status: 400 })
       }
       
       // Create RSVP
-      await prisma.eventAttendee.create({
-        data: {
+      const { error: rsvpError } = await supabase
+        .from('EventAttendee')
+        .insert({
           eventId,
-          userId: profile.id
-        }
-      })
+          userId: user.id
+        })
+      
+      if (rsvpError) {
+        console.error("RSVP error:", rsvpError)
+        return NextResponse.json({ error: "Failed to RSVP" }, { status: 500 })
+      }
       
       return NextResponse.json({ message: "RSVP successful" })
     } else if (action === "cancel") {
       // Cancel RSVP
-      await prisma.eventAttendee.delete({
-        where: {
-          eventId_userId: {
-            eventId,
-            userId: profile.id
-          }
-        }
-      })
+      const { error: cancelError } = await supabase
+        .from('EventAttendee')
+        .delete()
+        .eq('eventId', eventId)
+        .eq('userId', user.id)
+      
+      if (cancelError) {
+        console.error("Cancel RSVP error:", cancelError)
+        return NextResponse.json({ error: "Failed to cancel RSVP" }, { status: 500 })
+      }
       
       return NextResponse.json({ message: "RSVP cancelled" })
     } else {
@@ -135,10 +145,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 // PATCH /api/events/[id] - Update event (organizer only)
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
-    const { profile } = await getCurrentUser()
-    if (!profile) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
-    }
+    // Authentication
+    const authResult = await requireAuth(req)
+    if (authResult instanceof NextResponse) return authResult
+    const { user } = authResult
 
     const { id } = await params
     const eventId = parseInt(id)
@@ -147,129 +157,67 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 })
     }
 
-    // Check if user is the organizer
-    const existingEvent = await prisma.event.findUnique({
-      where: { id: eventId }
-    })
+    // Rate limiting
+    const rateLimitIdentifier = getRateLimitIdentifier(req, "events:update", user.id)
+    const rateLimitResponse = rateLimit(rateLimitIdentifier, RateLimits.STRICT)
+    if (rateLimitResponse) return rateLimitResponse
 
-    if (!existingEvent) {
-      return NextResponse.json({ error: "Event not found" }, { status: 404 })
+    // Authorization - verify ownership
+    const canModify = await canModifyEvent(user.id, eventId)
+    await assertOwnership(canModify)
+
+    // Validation
+    const validation = await validateRequest(req, updateEventSchema)
+    if ('error' in validation) {
+      return NextResponse.json(
+        { error: validation.error, details: validation.details },
+        { status: 400 }
+      )
     }
 
-    if (existingEvent.organizerId !== profile.id) {
-      return NextResponse.json({ error: "Only the organizer can edit this event" }, { status: 403 })
-    }
+    const { title, description, startTime, endTime, location, imageUrl, capacity, category } = validation.data
 
-    // Rate limiting: 10 updates per hour per user
-    if (!checkRateLimit(`event-update:${profile.id}`, 10, 3600000)) {
-      return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
-    }
-
-    const body = await req.json()
-    const updateData: any = {}
-
-    // Validate and sanitize each field if present
-    if (body.title !== undefined) {
-      const sanitizedTitle = sanitizeString(body.title, 200)
-      if (!sanitizedTitle) {
-        return NextResponse.json({ error: "Invalid title" }, { status: 400 })
-      }
-      updateData.title = sanitizedTitle
-    }
-
-    if (body.description !== undefined) {
-      const sanitizedDescription = sanitizeString(body.description, 2000)
-      if (!sanitizedDescription) {
-        return NextResponse.json({ error: "Invalid description" }, { status: 400 })
-      }
-      updateData.description = sanitizedDescription
-    }
-
-    if (body.location !== undefined) {
-      const sanitizedLocation = sanitizeString(body.location, 300)
-      if (!sanitizedLocation) {
-        return NextResponse.json({ error: "Invalid location" }, { status: 400 })
-      }
-      updateData.location = sanitizedLocation
-    }
-
-    if (body.eventDate !== undefined) {
-      const validatedDate = validateDate(body.eventDate)
-      if (!validatedDate || validatedDate < new Date()) {
+    // Build update object with only provided fields
+    const updateData: Record<string, any> = {}
+    if (title !== undefined) updateData.title = title
+    if (description !== undefined) updateData.description = description
+    if (location !== undefined) updateData.location = location
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl
+    if (capacity !== undefined) updateData.capacity = capacity
+    if (category !== undefined) updateData.category = category
+    
+    if (startTime !== undefined) {
+      const eventDate = new Date(startTime)
+      if (eventDate < new Date()) {
         return NextResponse.json({ error: "Event date must be in the future" }, { status: 400 })
       }
-      updateData.eventDate = validatedDate
+      updateData.eventDate = eventDate.toISOString()
+      updateData.startTime = startTime
     }
+    
+    if (endTime !== undefined) updateData.endTime = endTime
 
-    if (body.startTime !== undefined) {
-      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
-      if (!timeRegex.test(body.startTime)) {
-        return NextResponse.json({ error: "Invalid start time format" }, { status: 400 })
-      }
-      updateData.startTime = body.startTime
+    const supabase = await sbServer()
+    const { data: updatedEvent, error } = await supabase
+      .from('Event')
+      .update(updateData)
+      .eq('id', eventId)
+      .select(`
+        *,
+        organizer:Profile!Event_organizerId_fkey(id, name, avatarUrl)
+      `)
+      .single()
+
+    if (error || !updatedEvent) {
+      console.error("PATCH /api/events/[id] error:", error)
+      return NextResponse.json({ error: "Failed to update event" }, { status: 500 })
     }
-
-    if (body.endTime !== undefined) {
-      if (body.endTime) {
-        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
-        if (!timeRegex.test(body.endTime)) {
-          return NextResponse.json({ error: "Invalid end time format" }, { status: 400 })
-        }
-        updateData.endTime = body.endTime
-      } else {
-        updateData.endTime = null
-      }
-    }
-
-    if (body.capacity !== undefined) {
-      if (body.capacity === null || body.capacity === "") {
-        updateData.capacity = null
-      } else {
-        const validatedCapacity = validateInteger(body.capacity, 1, 10000)
-        if (validatedCapacity === null) {
-          return NextResponse.json({ error: "Invalid capacity value" }, { status: 400 })
-        }
-        updateData.capacity = validatedCapacity
-      }
-    }
-
-    if (body.category !== undefined) {
-      const allowedCategories = ["Academic", "Social", "Sports", "Arts & Culture", "Professional", "Community Service", "Other"]
-      if (body.category) {
-        const sanitizedCategory = sanitizeString(body.category, 50)
-        if (!allowedCategories.includes(sanitizedCategory)) {
-          return NextResponse.json({ error: "Invalid category" }, { status: 400 })
-        }
-        updateData.category = sanitizedCategory
-      } else {
-        updateData.category = null
-      }
-    }
-
-    if (body.imageUrl !== undefined) {
-      updateData.imageUrl = body.imageUrl ? sanitizeString(body.imageUrl, 500) : null
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
-    }
-
-    const updatedEvent = await prisma.event.update({
-      where: { id: eventId },
-      data: updateData,
-      include: {
-        organizer: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true
-          }
-        }
-      }
-    })
 
     return NextResponse.json({ data: updatedEvent })
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: 'Only the organizer can edit this event' }, { status: 403 })
+    }
     console.error("PATCH /api/events/[id] error:", error)
     return NextResponse.json({ error: "Failed to update event" }, { status: 500 })
   }
@@ -278,10 +226,10 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 // DELETE /api/events/[id] - Delete event (organizer only)
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
-    const { profile } = await getCurrentUser()
-    if (!profile) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
-    }
+    // Authentication
+    const authResult = await requireAuth(req)
+    if (authResult instanceof NextResponse) return authResult
+    const { user } = authResult
 
     const { id } = await params
     const eventId = parseInt(id)
@@ -290,28 +238,33 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Invalid event ID" }, { status: 400 })
     }
 
-    // Check if user is the organizer
-    const existingEvent = await prisma.event.findUnique({
-      where: { id: eventId }
-    })
+    // Rate limiting
+    const rateLimitIdentifier = getRateLimitIdentifier(req, "events:delete", user.id)
+    const rateLimitResponse = rateLimit(rateLimitIdentifier, RateLimits.STRICT)
+    if (rateLimitResponse) return rateLimitResponse
 
-    if (!existingEvent) {
-      return NextResponse.json({ error: "Event not found" }, { status: 404 })
-    }
-
-    if (existingEvent.organizerId !== profile.id) {
-      return NextResponse.json({ error: "Only the organizer can delete this event" }, { status: 403 })
-    }
+    // Authorization - verify ownership
+    const canModify = await canModifyEvent(user.id, eventId)
+    await assertOwnership(canModify)
 
     // Delete the event (cascade will delete attendees)
-    await prisma.event.delete({
-      where: { id: eventId }
-    })
+    const supabase = await sbServer()
+    const { error } = await supabase
+      .from('Event')
+      .delete()
+      .eq('id', eventId)
+
+    if (error) {
+      console.error("DELETE /api/events/[id] error:", error)
+      return NextResponse.json({ error: "Failed to delete event" }, { status: 500 })
+    }
 
     return NextResponse.json({ message: "Event deleted successfully" })
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: 'Only the organizer can delete this event' }, { status: 403 })
+    }
     console.error("DELETE /api/events/[id] error:", error)
     return NextResponse.json({ error: "Failed to delete event" }, { status: 500 })
   }
 }
-

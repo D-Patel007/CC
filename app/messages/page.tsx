@@ -1,7 +1,8 @@
 "use client"
 import { Suspense, useState, useEffect, useRef } from "react"
-import { useRealtimeMessages } from "@/lib/hooks/useRealtimeMessages"
 import { useSearchParams } from "next/navigation"
+import { useRealtimeMessages } from "@/lib/hooks/useRealtimeMessages"
+import { validateAudioFile, validateFileSize, validateImageFile } from "@/lib/validation"
 
 type Conversation = {
   id: number
@@ -40,6 +41,9 @@ function MessagesPageInner() {
   
   const { messages, loading: messagesLoading } = useRealtimeMessages(selectedConversationId)
 
+  const MAX_IMAGE_MB = 8
+  const MAX_AUDIO_MB = 12
+
   // Fetch conversations
   useEffect(() => {
     fetch("/api/messages")
@@ -60,10 +64,40 @@ function MessagesPageInner() {
       .catch(console.error)
   }, [conversationParam])
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom only when user is near bottom or sending
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const [isNearBottom, setIsNearBottom] = useState(true)
+  const previousMessagesLengthRef = useRef(0)
+  const lastMessageIdRef = useRef<number | null>(null)
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+    // Only auto-scroll if:
+    // 1. User is near bottom
+    // 2. There's a genuinely NEW message (different last message ID)
+    const lastMessage = messages[messages.length - 1]
+    const hasNewMessage = lastMessage && lastMessage.id !== lastMessageIdRef.current
+    
+    if (isNearBottom && hasNewMessage && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+    
+    // Update refs
+    if (lastMessage) {
+      lastMessageIdRef.current = lastMessage.id
+    }
+    previousMessagesLengthRef.current = messages.length
+  }, [messages, isNearBottom])
+
+  // Track scroll position to determine if user is reading history
+  const handleScroll = () => {
+    if (!messagesContainerRef.current) return
+    
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+    
+    // If user is within 100px of bottom, enable auto-scroll
+    setIsNearBottom(distanceFromBottom < 100)
+  }
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId)
 
@@ -72,6 +106,8 @@ function MessagesPageInner() {
     if (!selectedConversationId || !newMessage.trim() || sending) return
 
     setSending(true)
+    // Force scroll to bottom when sending a message
+    setIsNearBottom(true)
     try {
       await fetch(`/api/messages/${selectedConversationId}`, {
         method: "POST",
@@ -91,6 +127,22 @@ function MessagesPageInner() {
     if (!file || !selectedConversationId) return
 
     // Create preview URL
+    if (!validateImageFile(file)) {
+      alert('Please choose a JPG, PNG, GIF, or WEBP image.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    if (!validateFileSize(file, MAX_IMAGE_MB)) {
+      alert(`Images must be ${MAX_IMAGE_MB}MB or less.`)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    if (photoPreview) {
+      URL.revokeObjectURL(photoPreview)
+    }
+
     const previewUrl = URL.createObjectURL(file)
     setSelectedPhoto(file)
     setPhotoPreview(previewUrl)
@@ -100,6 +152,8 @@ function MessagesPageInner() {
     if (!selectedPhoto || !selectedConversationId) return
 
     setUploading(true)
+    // Force scroll to bottom when sending media
+    setIsNearBottom(true)
     try {
       // Upload file
       const formData = new FormData()
@@ -110,6 +164,11 @@ function MessagesPageInner() {
         method: 'POST',
         body: formData
       })
+      if (!uploadRes.ok) {
+        const errorPayload = await uploadRes.json().catch(() => ({}))
+        throw new Error(errorPayload.error || 'Upload failed')
+      }
+
       const uploadData = await uploadRes.json()
 
       if (!uploadData.data?.url) {
@@ -133,7 +192,8 @@ function MessagesPageInner() {
       }
     } catch (error) {
       console.error('Photo upload failed:', error)
-      alert('Failed to send photo')
+      const message = error instanceof Error ? error.message : 'Failed to send photo'
+      alert(message)
     } finally {
       setUploading(false)
     }
@@ -198,9 +258,19 @@ function MessagesPageInner() {
     if (!audioBlob || !selectedConversationId) return
 
     setUploading(true)
+    // Force scroll to bottom when sending media
+    setIsNearBottom(true)
     try {
       // Create a File object from the Blob
       const audioFile = new File([audioBlob], `voice-${Date.now()}.webm`, { type: 'audio/webm' })
+
+      if (!validateAudioFile(audioFile)) {
+        throw new Error('Unsupported audio type. Please record in webm, mp3, wav, or ogg.')
+      }
+
+      if (!validateFileSize(audioFile, MAX_AUDIO_MB)) {
+        throw new Error(`Voice messages must be ${MAX_AUDIO_MB}MB or less.`)
+      }
       
       // Upload file
       const formData = new FormData()
@@ -211,6 +281,11 @@ function MessagesPageInner() {
         method: 'POST',
         body: formData
       })
+      if (!uploadRes.ok) {
+        const errorPayload = await uploadRes.json().catch(() => ({}))
+        throw new Error(errorPayload.error || 'Upload failed')
+      }
+
       const uploadData = await uploadRes.json()
 
       if (!uploadData.data?.url) {
@@ -233,7 +308,8 @@ function MessagesPageInner() {
       }
     } catch (error) {
       console.error('Voice message upload failed:', error)
-      alert('Failed to send voice message')
+      const message = error instanceof Error ? error.message : 'Failed to send voice message'
+      alert(message)
     } finally {
       setUploading(false)
     }
@@ -298,9 +374,17 @@ function MessagesPageInner() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0">
-                      {(conv.otherUser.name || 'U').charAt(0).toUpperCase()}
-                    </div>
+                    {conv.otherUser.avatarUrl ? (
+                      <img 
+                        src={conv.otherUser.avatarUrl} 
+                        alt={conv.otherUser.name || 'User'}
+                        className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0">
+                        {(conv.otherUser.name || 'U').charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="font-semibold truncate text-foreground">{conv.otherUser.name || 'User'}</p>
@@ -335,16 +419,28 @@ function MessagesPageInner() {
             <>
               {/* Header */}
               <div className="p-4 border-b border-border flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                  {(selectedConversation.otherUser.name || 'U').charAt(0).toUpperCase()}
-                </div>
+                {selectedConversation.otherUser.avatarUrl ? (
+                  <img 
+                    src={selectedConversation.otherUser.avatarUrl} 
+                    alt={selectedConversation.otherUser.name || 'User'}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                    {(selectedConversation.otherUser.name || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div>
                   <h3 className="font-semibold text-foreground">{selectedConversation.otherUser.name || 'User'}</h3>
                 </div>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div 
+                ref={messagesContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto p-4 space-y-4"
+              >
                 {messagesLoading ? (
                   <div className="text-center text-foreground-secondary">Loading messages...</div>
                 ) : messages.length === 0 ? (
@@ -361,7 +457,7 @@ function MessagesPageInner() {
                           onMouseLeave={() => setHoveredMessageId(null)}
                         >
                           <div className="relative">
-                            <div className={`max-w-[70%] rounded-lg p-3 ${
+                            <div className={`rounded-lg p-3 ${
                               isOwn ? 'bg-primary text-white' : 'bg-[var(--background-elevated)] text-foreground'
                             }`}>
                               {/* Display based on message type */}
@@ -370,19 +466,45 @@ function MessagesPageInner() {
                                   src={msg.mediaUrl} 
                                   alt="Photo message" 
                                   className="rounded max-w-full h-auto mb-2"
+                                  style={{ maxWidth: '300px' }}
                                 />
                               )}
                               {msg.messageType === 'VOICE' && msg.mediaUrl && (
-                                <audio controls className="mb-2 max-w-full">
+                                <audio controls className="mb-2" style={{ maxWidth: '300px' }}>
                                   <source src={msg.mediaUrl} />
                                 </audio>
                               )}
                               {msg.content && <p className="text-sm">{msg.content}</p>}
                               <p className={`text-xs mt-1 ${isOwn ? 'text-white/80' : 'text-foreground-secondary'}`}>
-                                {new Date(msg.createdAt).toLocaleTimeString([], { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
+                                {(() => {
+                                  // Ensure proper UTC parsing - if timestamp doesn't end in Z, add it
+                                  let timestampStr = msg.createdAt
+                                  if (!timestampStr.endsWith('Z') && !timestampStr.includes('+') && !timestampStr.includes('T')) {
+                                    timestampStr = timestampStr.replace(' ', 'T') + 'Z'
+                                  } else if (timestampStr.includes('T') && !timestampStr.endsWith('Z') && !timestampStr.includes('+')) {
+                                    timestampStr += 'Z'
+                                  }
+                                  
+                                  const messageDate = new Date(timestampStr)
+                                  const now = new Date()
+                                  const isToday = messageDate.toDateString() === now.toDateString()
+                                  
+                                  if (isToday) {
+                                    return messageDate.toLocaleString('en-US', { 
+                                      hour: 'numeric', 
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })
+                                  } else {
+                                    return messageDate.toLocaleString('en-US', { 
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: 'numeric', 
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })
+                                  }
+                                })()}
                               </p>
                             </div>
                             {/* Unsend button - only show for own messages on hover */}

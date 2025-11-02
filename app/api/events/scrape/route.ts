@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { load } from "cheerio"
-import { prisma } from "@/lib/db"
+import { sbServer } from "@/lib/supabase/server"
 import { getCurrentUser } from "@/lib/auth"
 
 // Helper function to parse event details from the UMass Boston events page
@@ -147,30 +147,32 @@ export async function GET(req: NextRequest) {
     // Save events to database
     const savedEvents = []
     const { profile } = await getCurrentUser()
+    const supabase = await sbServer()
     
     for (const event of scrapedEvents) {
       // Fetch full description
       const description = await fetchEventDescription(event.url)
       
       // Check if event already exists (by title and date)
-      const existing = await prisma.event.findFirst({
-        where: {
-          title: event.title,
-          eventDate: new Date(event.eventDate),
-          isExternal: true
-        }
-      })
+      const { data: existing } = await supabase
+        .from('Event')
+        .select('id')
+        .eq('title', event.title)
+        .eq('eventDate', event.eventDate)
+        .eq('isExternal', true)
+        .single()
       
       if (existing) {
         continue // Skip duplicates
       }
       
       // Create the event
-      const saved = await prisma.event.create({
-        data: {
+      const { data: saved, error } = await supabase
+        .from('Event')
+        .insert({
           title: event.title,
           description: description,
-          eventDate: new Date(event.eventDate),
+          eventDate: event.eventDate,
           startTime: convertTo24Hour(event.startTime),
           endTime: event.endTime ? convertTo24Hour(event.endTime) : null,
           location: event.location,
@@ -179,10 +181,13 @@ export async function GET(req: NextRequest) {
           organizerId: profile!.id, // Use authenticated user as organizer
           isExternal: true,
           externalSource: event.url
-        }
-      })
+        })
+        .select()
+        .single()
       
-      savedEvents.push(saved)
+      if (!error && saved) {
+        savedEvents.push(saved)
+      }
     }
     
     return NextResponse.json({ 

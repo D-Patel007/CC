@@ -1,18 +1,32 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { sbServer } from '@/lib/supabase/server'
 
 // GET /api/users  -> list users (profiles) with their listing counts
 export async function GET() {
-  const users = await prisma.profile.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      _count: {
-        select: { listings: true },
-      },
-    },
-  })
+  const supabase = await sbServer()
+  
+  const { data: users, error } = await supabase
+    .from('Profile')
+    .select(`
+      *,
+      listings:Listing(id)
+    `)
+    .order('createdAt', { ascending: false })
 
-  return NextResponse.json({ data: users })
+  if (error) {
+    console.error('GET /api/users failed:', error)
+    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
+  }
+
+  // Transform to include listing count
+  const usersWithCount = users?.map(user => ({
+    ...user,
+    _count: {
+      listings: user.listings?.length || 0
+    }
+  }))
+
+  return NextResponse.json({ data: usersWithCount })
 }
 
 
@@ -29,18 +43,46 @@ export async function POST(req: Request) {
       )
     }
 
-    const user = await prisma.profile.upsert({
-      where: { supabaseId },
-      update: {
-        name: typeof name === 'string' ? name : undefined,
-        avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : undefined,
-      },
-      create: {
-        supabaseId,
-        name: typeof name === 'string' ? name : null,
-        avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
-      },
-    })
+    const supabase = await sbServer()
+    
+    // Check if profile exists
+    const { data: existing } = await supabase
+      .from('Profile')
+      .select('id')
+      .eq('supabaseId', supabaseId)
+      .single()
+
+    let user
+    if (existing) {
+      // Update existing profile
+      const updateData: any = {}
+      if (typeof name === 'string') updateData.name = name
+      if (typeof avatarUrl === 'string') updateData.avatarUrl = avatarUrl
+
+      const { data, error } = await supabase
+        .from('Profile')
+        .update(updateData)
+        .eq('supabaseId', supabaseId)
+        .select()
+        .single()
+
+      if (error) throw error
+      user = data
+    } else {
+      // Create new profile
+      const { data, error } = await supabase
+        .from('Profile')
+        .insert({
+          supabaseId,
+          name: typeof name === 'string' ? name : null,
+          avatarUrl: typeof avatarUrl === 'string' ? avatarUrl : null,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      user = data
+    }
 
     return NextResponse.json({ data: user }, { status: 201 })
   } catch (err) {

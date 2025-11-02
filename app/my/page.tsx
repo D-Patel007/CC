@@ -2,24 +2,20 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import ListingCard from "@/components/ListingCard"
+import type { Database } from "@/lib/supabase/databaseTypes"
 
-type Listing = {
-  id: number
-  title: string
-  description: string
-  priceCents: number
-  condition: string
-  imageUrl: string | null
-  isSold: boolean
-  createdAt: string
-  category: {
+type ListingRow = Database['public']['Tables']['Listing']['Row']
+type CategoryRow = Database['public']['Tables']['Category']['Row']
+type ListingWithCategory = ListingRow & {
+  category?: CategoryRow | null
+  seller?: {
     id: number
-    name: string
-  } | null
+    name: string | null
+  }
 }
 
 export default function MyListingsPage() {
-  const [listings, setListings] = useState<Listing[]>([])
+  const [listings, setListings] = useState<ListingWithCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "active" | "sold">("all")
 

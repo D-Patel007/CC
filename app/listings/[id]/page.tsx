@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import ImageCarousel from "@/components/ImageCarousel"
+import VerifiedBadge from "@/components/VerifiedBadge"
 
 type Listing = {
   id: number
@@ -10,6 +12,8 @@ type Listing = {
   priceCents: number
   condition: string
   imageUrl: string | null
+  images: string[]
+  imageCount: number
   campus: string | null
   isSold: boolean
   createdAt: string
@@ -23,6 +27,7 @@ type Listing = {
     name: string | null
     avatarUrl: string | null
     createdAt: string
+    isVerified: boolean
   }
 }
 
@@ -150,25 +155,21 @@ export default function ListingDetailPage({ params }: PageProps) {
   const isOwnListing = currentUserId === listing.seller.id
   const price = `$${(listing.priceCents / 100).toFixed(2)}`
   const sellerName = listing.seller.name || "Anonymous"
+  
+  // Use images array, fallback to imageUrl, then empty array
+  const displayImages = listing.images && listing.images.length > 0
+    ? listing.images
+    : listing.imageUrl
+    ? [listing.imageUrl]
+    : []
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <div className="bg-[var(--card-bg)] rounded-xl border border-border overflow-hidden">
+      <div className="bg-[var(--card-bg)] rounded-xl border border-border overflow-hidden shadow-float">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Image */}
-          <div className="aspect-square bg-[var(--background-elevated)]">
-            {listing.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img 
-                src={listing.imageUrl} 
-                alt={listing.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-foreground-secondary">
-                <span className="text-6xl">📦</span>
-              </div>
-            )}
+          {/* Image Carousel */}
+          <div className="p-6">
+            <ImageCarousel images={displayImages} alt={listing.title} />
           </div>
 
           {/* Details */}
@@ -209,11 +210,22 @@ export default function ListingDetailPage({ params }: PageProps) {
             <div className="border-t border-border pt-4">
               <h2 className="font-semibold mb-2">Seller</h2>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                  {sellerName.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <p className="font-medium">{sellerName}</p>
+                {listing.seller.avatarUrl ? (
+                  <img 
+                    src={listing.seller.avatarUrl} 
+                    alt={sellerName}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                    {sellerName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{sellerName}</p>
+                    <VerifiedBadge isVerified={listing.seller.isVerified} size="sm" />
+                  </div>
                   <p className="text-sm text-foreground-secondary">
                     Member since {new Date(listing.seller.createdAt).getFullYear()}
                   </p>
