@@ -69,6 +69,7 @@ export default async function Marketplace({
     if (error) throw error
     listings = data || []
   } catch (err) {
+    console.error('Error loading listings:', err)
     return (
       <main className="mx-auto max-w-5xl p-6">
         <h1 className="mb-2 text-2xl font-semibold">Campus Connect</h1>
