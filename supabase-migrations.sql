@@ -16,7 +16,7 @@ ADD COLUMN IF NOT EXISTS "images" TEXT[] DEFAULT ARRAY[]::TEXT[];
 
 -- Migrate existing imageUrl data to images array (keep both for backward compatibility initially)
 UPDATE "Listing" 
-SET "images" = ARRAY[imageUrl]::TEXT[]
+SET "images" = ARRAY["imageUrl"]::TEXT[]
 WHERE "imageUrl" IS NOT NULL AND "images" = ARRAY[]::TEXT[];
 
 -- Create index for image queries
