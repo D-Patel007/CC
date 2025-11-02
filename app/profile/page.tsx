@@ -222,7 +222,7 @@ export default function ProfilePage() {
                       <button
                         type="button"
                         onClick={removeAvatar}
-                        className="text-sm text-error hover:underline"
+                        className="text-sm text-error hover:text-error-dark hover:underline transition"
                       >
                         Remove
                       </button>
@@ -290,7 +290,7 @@ export default function ProfilePage() {
             <div className="flex gap-2 mt-6">
               <button
                 onClick={() => setShowEditModal(false)}
-                className="flex-1 py-2 border border-border rounded-lg hover:bg-[var(--background-elevated)]"
+                className="flex-1 py-2 border border-border rounded-lg hover:bg-[var(--background-elevated)] hover:border-primary transition-all"
                 disabled={saving}
               >
                 Cancel
@@ -344,7 +344,7 @@ export default function ProfilePage() {
             <div className="space-y-2">
               <button
                 onClick={() => setShowEditModal(true)}
-                className="w-full py-2 border border-border rounded-lg hover:bg-[var(--background-elevated)]"
+                className="w-full py-2 border border-border rounded-lg hover:bg-[var(--background-elevated)] hover:border-primary transition-all"
               >
                 Edit Profile
               </button>

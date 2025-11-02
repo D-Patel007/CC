@@ -539,7 +539,7 @@ function MessagesPageInner() {
                       <button
                         type="button"
                         onClick={cancelPhoto}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                        className="absolute -top-2 -right-2 bg-error text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-error-dark transition shadow-lg"
                       >
                         ✕
                       </button>
@@ -548,7 +548,7 @@ function MessagesPageInner() {
                       type="button"
                       onClick={sendPhoto}
                       disabled={uploading}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover disabled:opacity-50 transition shadow-subtle"
                     >
                       {uploading ? 'Sending...' : 'Send Photo'}
                     </button>
@@ -564,7 +564,7 @@ function MessagesPageInner() {
                     <button
                       type="button"
                       onClick={cancelVoiceMessage}
-                      className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+                      className="px-4 py-2 rounded-lg border border-border hover:bg-[var(--background-elevated)] hover:border-primary transition-all"
                     >
                       Cancel
                     </button>
@@ -572,7 +572,7 @@ function MessagesPageInner() {
                       type="button"
                       onClick={sendVoiceMessage}
                       disabled={uploading}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover disabled:opacity-50 transition shadow-subtle"
                     >
                       {uploading ? 'Sending...' : 'Send Voice'}
                     </button>

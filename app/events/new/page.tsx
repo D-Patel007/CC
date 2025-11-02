@@ -218,7 +218,7 @@ export default function NewEventPage() {
               <button
                 type="button"
                 onClick={clearImage}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                className="absolute -top-2 -right-2 bg-error text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-error-dark transition shadow-lg"
               >
                 ✕
               </button>
@@ -227,9 +227,9 @@ export default function NewEventPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full rounded-lg border-2 border-dashed border-gray-300 p-6 text-center hover:border-blue-500 transition"
+              className="w-full rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-primary hover:bg-primary/5 transition-all"
             >
-              <div className="text-gray-500">
+              <div className="text-foreground-secondary">
                 <span className="text-2xl block mb-2">📷</span>
                 <span className="text-sm">Click to upload an image</span>
               </div>
@@ -242,7 +242,7 @@ export default function NewEventPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition"
+            className="w-full bg-primary text-white py-3 rounded-lg hover:bg-primary-hover disabled:opacity-50 font-medium transition shadow-subtle"
           >
             {loading ? "Creating Event..." : "Create Event"}
           </button>
