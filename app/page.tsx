@@ -1,8 +1,10 @@
-﻿import { prisma } from "@/lib/db"
+﻿import { sbServer } from "@/lib/supabase/server"
 import ListingCard from "@/components/ListingCard"
 import CategoryTabs from "@/components/CategoryTabs"
-import type { Listing, Category } from "@prisma/client"
+import type { Database } from "@/lib/supabase/databaseTypes"
 
+type Listing = Database['public']['Tables']['Listing']['Row']
+type Category = Database['public']['Tables']['Category']['Row']
 type ListingWithCategory = Listing & { category: Category | null }
 
 export const dynamic = "force-dynamic"
@@ -16,44 +18,62 @@ export default async function Marketplace({
   const categoryFilter = params.category as string | undefined
   const sortBy = params.sort as string | undefined
 
-  let listings: ListingWithCategory[] = []
+  let listings: any[] = []
+  let categories: Category[] = []
 
   try {
-    // Build the where clause for filtering
-    const whereClause: any = {}
+    const supabase = await sbServer()
+
+    const { data: categoryData, error: categoryError } = await supabase
+      .from('Category')
+      .select('id, name, slug')
+      .order('name', { ascending: true })
+
+    if (!categoryError && categoryData) {
+      categories = categoryData
+    }
+
+    // Build query
+    let query = supabase
+      .from('Listing')
+      .select(`
+        *,
+        category:Category(*)
+      `)
+      .limit(30)
     
     // Filter by category if specified and not "All"
     if (categoryFilter && categoryFilter.toLowerCase() !== "all") {
-      whereClause.category = {
-        name: {
-          equals: categoryFilter,
-          mode: "insensitive" as const,
-        },
+      const normalizedFilter = categoryFilter.toLowerCase()
+      const categoryMatch = categories.find((cat) =>
+        cat.slug?.toLowerCase() === normalizedFilter ||
+        cat.name?.toLowerCase() === normalizedFilter
+      )
+
+      if (categoryMatch) {
+        query = query.eq('categoryId', categoryMatch.id)
       }
     }
 
-    // Build the orderBy clause for sorting
-    let orderBy: any = { createdAt: "desc" }
+    // Apply sorting
     if (sortBy === "price_low") {
-      orderBy = { priceCents: "asc" }
+      query = query.order('priceCents', { ascending: true })
     } else if (sortBy === "price_high") {
-      orderBy = { priceCents: "desc" }
+      query = query.order('priceCents', { ascending: false })
+    } else {
+      query = query.order('createdAt', { ascending: false })
     }
 
-    listings = await prisma.listing.findMany({
-      where: whereClause,
-      orderBy,
-      take: 30,
-      include: {
-        category: true,
-      },
-    })
+    const { data, error } = await query
+
+    if (error) throw error
+    listings = data || []
   } catch (err) {
     return (
       <main className="mx-auto max-w-5xl p-6">
         <h1 className="mb-2 text-2xl font-semibold">Campus Connect</h1>
         <p className="rounded-lg border bg-red-50 p-4 text-sm">
-          Could not load listings. Check your Prisma schema and server logs.
+          Could not load listings. Check your database connection and server logs.
         </p>
       </main>
     )
@@ -76,7 +96,7 @@ export default async function Marketplace({
       </section>
 
       <div className="mx-auto max-w-6xl px-6 py-8">
-        <CategoryTabs />
+  <CategoryTabs categories={categories} />
 
         {listings.length === 0 ? (
           <div className="text-center py-16 text-foreground-secondary">

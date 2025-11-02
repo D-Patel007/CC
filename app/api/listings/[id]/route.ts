@@ -1,155 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { type Prisma } from '@prisma/client'
-
-// Define Condition enum manually since it's not exported by Prisma Client
-enum Condition {
-  NEW = 'NEW',
-  LIKE_NEW = 'LIKE_NEW',
-  GOOD = 'GOOD',
-  FAIR = 'FAIR',
-  POOR = 'POOR'
-}
-import { prisma } from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth'
-
-function parseCondition(value: unknown) {
-  if (typeof value !== 'string') return undefined
-  const normalized = value.toUpperCase()
-  return Object.values(Condition).includes(normalized as Condition)
-    ? (normalized as Condition)
-    : undefined
-}
-
-function parseBoolean(value: unknown) {
-  if (typeof value === 'boolean') return value
-  if (typeof value === 'number') return value === 1
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase()
-    if (['true', '1', 'yes', 'on'].includes(normalized)) return true
-    if (['false', '0', 'no', 'off', ''].includes(normalized)) return false
-  }
-  return undefined
-}
-
-async function ensureOwner(listingId: number) {
-  const { profile } = await getCurrentUser()
-  if (!profile) {
-    return {
-      response: NextResponse.json({ error: 'Not authenticated' }, { status: 401 }),
-    }
-  }
-
-  const listing = await prisma.listing.findUnique({ where: { id: listingId } })
-  if (!listing) {
-    return {
-      response: NextResponse.json({ error: 'Not found' }, { status: 404 }),
-    }
-  }
-
-  if (listing.sellerId !== profile.id) {
-    return {
-      response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }),
-    }
-  }
-
-  return { listing, profile }
-}
-
-async function applyUpdate(listingId: number, payload: Record<string, unknown>) {
-  const auth = await ensureOwner(listingId)
-  if ('response' in auth) return auth.response
-
-  const data: Prisma.ListingUpdateInput = {}
-
-  if (typeof payload.title === 'string') {
-    const value = payload.title.trim()
-    if (!value) return NextResponse.json({ error: 'Title cannot be empty' }, { status: 400 })
-    data.title = value
-  }
-
-  if (typeof payload.description === 'string') {
-    const value = payload.description.trim()
-    if (!value)
-      return NextResponse.json({ error: 'Description cannot be empty' }, { status: 400 })
-    data.description = value
-  }
-
-  if (typeof payload.imageUrl === 'string') {
-    const trimmed = payload.imageUrl.trim()
-    data.imageUrl = trimmed ? trimmed : null
-  }
-
-  if (payload.priceCents !== undefined) {
-    const priceCents = Math.round(Number(payload.priceCents))
-    if (!Number.isFinite(priceCents) || priceCents <= 0) {
-      return NextResponse.json({ error: 'priceCents must be > 0' }, { status: 400 })
-    }
-    data.priceCents = priceCents
-  } else if (payload.price !== undefined) {
-    const priceCents = Math.round(Number(payload.price) * 100)
-    if (!Number.isFinite(priceCents) || priceCents <= 0) {
-      return NextResponse.json({ error: 'price must be > 0' }, { status: 400 })
-    }
-    data.priceCents = priceCents
-  }
-
-  const condition = parseCondition(payload.condition)
-  if (condition) {
-    data.condition = condition
-  }
-
-  if (typeof payload.campus === 'string') {
-    const trimmed = payload.campus.trim()
-    if (trimmed) {
-      data.campus = trimmed
-    }
-  }
-
-  if (payload.categoryId !== undefined) {
-    if (payload.categoryId === null || payload.categoryId === '') {
-      data.category = { disconnect: true }
-    } else {
-      const categoryId = Number(payload.categoryId)
-      if (!Number.isInteger(categoryId)) {
-        return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
-      }
-      const category = await prisma.category.findUnique({ where: { id: categoryId } })
-      if (!category) {
-        return NextResponse.json({ error: 'Category not found' }, { status: 400 })
-      }
-      data.category = { connect: { id: categoryId } }
-    }
-  }
-
-  const markSold = parseBoolean(payload.markSold)
-  const nextSold = markSold !== undefined ? markSold : parseBoolean(payload.isSold)
-  if (nextSold !== undefined) {
-    data.isSold = nextSold
-  }
-
-  if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: 'No changes supplied' }, { status: 400 })
-  }
-
-  const listing = await prisma.listing.update({
-    where: { id: listingId },
-    data,
-    include: {
-      category: true,
-      seller: { select: { id: true, name: true } },
-    },
-  })
-
-  return NextResponse.json({ data: listing })
-}
-
-async function applyDelete(listingId: number) {
-  const auth = await ensureOwner(listingId)
-  if ('response' in auth) return auth.response
-
-  await prisma.listing.delete({ where: { id: listingId } })
-  return NextResponse.json({ ok: true })
-}
+import { sbServer } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth-middleware'
+import { canModifyListing, assertOwnership, AuthorizationError } from '@/lib/authorization'
+import { validateRequest, updateListingSchema } from '@/lib/validation-schemas'
+import { rateLimit, RateLimits, getRateLimitIdentifier } from '@/lib/rate-limit'
 
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: rawId } = await context.params
@@ -158,65 +12,171 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
 
-  const listing = await prisma.listing.findUnique({
-    where: { id },
-    include: {
-      category: true,
-      seller: { select: { id: true, name: true } },
-    },
-  })
-  if (!listing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  // Rate limiting for reads
+  const rateLimitIdentifier = getRateLimitIdentifier(_req, "listings:read:id")
+  const rateLimitResponse = rateLimit(rateLimitIdentifier, RateLimits.LENIENT)
+  if (rateLimitResponse) return rateLimitResponse
+
+  const supabase = await sbServer()
+  const { data: listing, error } = await supabase
+    .from('Listing')
+    .select(`
+      *,
+      category:Category(*),
+      seller:Profile!Listing_sellerId_fkey(id, name)
+    `)
+    .eq('id', id)
+    .single()
+
+  if (error || !listing) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+  
   return NextResponse.json({ data: listing })
 }
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const { id: rawId } = await context.params
-  const id = Number(rawId)
-  if (!Number.isInteger(id)) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
-  const contentType = req.headers.get('content-type') || ''
-  let payload: Record<string, unknown> = {}
-  if (contentType.includes('application/json')) {
-    payload = await req.json()
-  } else {
-    const form = await req.formData()
-    form.forEach((value, key) => {
-      payload[key] = value
-    })
-  }
+  try {
+    const { id: rawId } = await context.params
+    const id = Number(rawId)
+    if (!Number.isInteger(id)) {
+      return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+    }
 
-  return applyUpdate(id, payload)
+    // Authentication
+    const authResult = await requireAuth(req)
+    if (authResult instanceof NextResponse) return authResult
+    const { user } = authResult
+
+    // Rate limiting
+    const rateLimitIdentifier = getRateLimitIdentifier(req, "listings:update", user.id)
+    const rateLimitResponse = rateLimit(rateLimitIdentifier, RateLimits.STRICT)
+    if (rateLimitResponse) return rateLimitResponse
+
+    // Authorization - verify ownership
+    const canModify = await canModifyListing(user.id, id)
+    await assertOwnership(canModify)
+
+    // Validation
+    const validation = await validateRequest(req, updateListingSchema)
+    if ('error' in validation) {
+      return NextResponse.json(
+        { error: validation.error, details: validation.details },
+        { status: 400 }
+      )
+    }
+
+    const { title, description, priceCents, condition, categoryId, imageUrl, campus, isSold } = validation.data
+
+    const supabase = await sbServer()
+
+    // Build update object with only provided fields
+    const data: Record<string, any> = {}
+    if (title !== undefined) data.title = title
+    if (description !== undefined) data.description = description
+    if (priceCents !== undefined) data.priceCents = priceCents
+    if (condition !== undefined) data.condition = condition
+    if (imageUrl !== undefined) data.imageUrl = imageUrl
+    if (campus !== undefined) data.campus = campus
+    if (isSold !== undefined) data.isSold = isSold
+    
+    if (categoryId !== undefined) {
+      if (categoryId === null) {
+        data.categoryId = null
+      } else {
+        const { data: category } = await supabase
+          .from('Category')
+          .select('id')
+          .eq('id', categoryId)
+          .single()
+        
+        if (!category) {
+          return NextResponse.json({ error: 'Category not found' }, { status: 400 })
+        }
+        data.categoryId = categoryId
+      }
+    }
+
+    const { data: listing, error } = await supabase
+      .from('Listing')
+      .update(data)
+      .eq('id', id)
+      .select(`
+        *,
+        category:Category(*),
+        seller:Profile!Listing_sellerId_fkey(id, name, avatarUrl)
+      `)
+      .single()
+
+    if (error || !listing) {
+      console.error('Failed to update listing:', error)
+      return NextResponse.json({ error: 'Failed to update listing' }, { status: 500 })
+    }
+
+    return NextResponse.json({ data: listing })
+  } catch (error: any) {
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: 'You do not have permission to modify this listing' }, { status: 403 })
+    }
+    console.error('PATCH /api/listings/[id] failed:', error)
+    return NextResponse.json({ error: 'Failed to update listing' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const form = await req.formData()
-  const method = String(form.get('_method') || '').toUpperCase()
-
-  if (method === 'DELETE') {
-    return DELETE(req, ctx)
-  }
-  const { id: rawId } = await ctx.params
-  const id = Number(rawId)
-  if (!Number.isInteger(id)) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
-
-  const payload: Record<string, unknown> = {}
-  form.forEach((value, key) => {
-    if (key !== '_method') {
-      payload[key] = value
+  // Support form-based _method override for DELETE
+  const contentType = req.headers.get('content-type') || ''
+  if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
+    const form = await req.formData()
+    const method = String(form.get('_method') || '').toUpperCase()
+    if (method === 'DELETE') {
+      return DELETE(req, ctx)
     }
-  })
-  return applyUpdate(id, payload)
+  }
+  
+  // Otherwise treat as PATCH
+  return PATCH(req, ctx)
 }
 
-export async function DELETE(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const { id: rawId } = await context.params
-  const id = Number(rawId)
-  if (!Number.isInteger(id)) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  try {
+    const { id: rawId } = await context.params
+    const id = Number(rawId)
+    if (!Number.isInteger(id)) {
+      return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+    }
 
-  return applyDelete(id)
+    // Authentication
+    const authResult = await requireAuth(req)
+    if (authResult instanceof NextResponse) return authResult
+    const { user } = authResult
+
+    // Rate limiting
+    const rateLimitIdentifier = getRateLimitIdentifier(req, "listings:delete", user.id)
+    const rateLimitResponse = rateLimit(rateLimitIdentifier, RateLimits.STRICT)
+    if (rateLimitResponse) return rateLimitResponse
+
+    // Authorization - verify ownership
+    const canModify = await canModifyListing(user.id, id)
+    await assertOwnership(canModify)
+
+    const supabase = await sbServer()
+    const { error } = await supabase
+      .from('Listing')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('DELETE /api/listings/[id] failed:', error)
+      return NextResponse.json({ error: 'Failed to delete listing' }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (error: any) {
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: 'You do not have permission to delete this listing' }, { status: 403 })
+    }
+    console.error('DELETE /api/listings/[id] failed:', error)
+    return NextResponse.json({ error: 'Failed to delete listing' }, { status: 500 })
+  }
 }

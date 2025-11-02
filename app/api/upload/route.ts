@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getCurrentUser } from "@/lib/auth"
+import { requireAuth } from "@/lib/auth-middleware"
 import { sbServer } from "@/lib/supabase/server"
 import { validateFileSize, validateImageFile, validateAudioFile, sanitizeFilename, checkRateLimit } from "@/lib/validation"
 
 const MAX_IMAGE_SIZE_MB = 5
 const MAX_AUDIO_SIZE_MB = 10
+const ALLOWED_TYPES = ["photo", "voice", "listing"] as const
 
 export async function POST(req: NextRequest) {
   try {
-    const { profile } = await getCurrentUser()
-    if (!profile) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    // Authenticate user
+    const authResult = await requireAuth(req)
+    if (authResult instanceof NextResponse) {
+      return authResult
     }
+    const { user } = authResult
 
     // Rate limiting: 10 uploads per minute per user
-    if (!checkRateLimit(`upload:${profile.id}`, 10, 60000)) {
+    if (!checkRateLimit(`upload:${user.id}`, 10, 60000)) {
       return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
     }
 
@@ -24,6 +27,10 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
+    }
+
+    if (!ALLOWED_TYPES.includes(type as any)) {
+      return NextResponse.json({ error: "Invalid file type parameter. Must be 'photo', 'voice', or 'listing'" }, { status: 400 })
     }
 
     // Validate file type and size
@@ -41,14 +48,12 @@ export async function POST(req: NextRequest) {
       if (!validateFileSize(file, MAX_AUDIO_SIZE_MB)) {
         return NextResponse.json({ error: `Audio file size must be less than ${MAX_AUDIO_SIZE_MB}MB` }, { status: 400 })
       }
-    } else {
-      return NextResponse.json({ error: "Invalid file type parameter" }, { status: 400 })
     }
 
     // Create secure filename
     const fileExt = file.name.split('.').pop()
     const sanitizedExt = sanitizeFilename(fileExt || 'bin')
-    const fileName = `${profile.id}-${Date.now()}-${Math.random().toString(36).substring(7)}.${sanitizedExt}`
+    const fileName = `${user.id}-${Date.now()}-${Math.random().toString(36).substring(7)}.${sanitizedExt}`
     
     // Determine folder path
     let folderPath = 'photos'

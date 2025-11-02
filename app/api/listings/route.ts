@@ -1,70 +1,70 @@
-import { NextResponse } from "next/server"
-import { Prisma, Condition } from "@prisma/client"
-import { prisma } from "@/lib/db"
-import { getCurrentUser } from "@/lib/auth"
+import { NextRequest, NextResponse } from "next/server"
+import { sbServer } from "@/lib/supabase/server"
+import { requireAuth } from "@/lib/auth-middleware"
+import { validateRequest, createListingSchema } from "@/lib/validation-schemas"
+import { rateLimit, RateLimits, getRateLimitIdentifier } from "@/lib/rate-limit"
 
 // CREATE a listing
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { supabaseUser, profile } = await getCurrentUser()
-    if (!supabaseUser || !profile) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
-    }
+    // Authentication
+    const authResult = await requireAuth(req)
+    if (authResult instanceof NextResponse) return authResult
+    const { user } = authResult
 
-    const body = await req.json()
+    // Rate limiting - strict for write operations
+    const rateLimitIdentifier = getRateLimitIdentifier(req, "listings:create", user.id)
+    const rateLimitResponse = rateLimit(rateLimitIdentifier, RateLimits.STRICT)
+    if (rateLimitResponse) return rateLimitResponse
 
-    const title = String(body.title ?? "").trim()
-    const description = String(body.description ?? "").trim()
-    const rawPrice =
-      body.priceCents !== undefined && body.priceCents !== null
-        ? Math.round(Number(body.priceCents))
-        : Math.round(Number(body.price) * 100)
-    const priceCents = Number.isFinite(rawPrice) ? rawPrice : 0
-    const categoryId = body.categoryId ? Number(body.categoryId) : null
-    const conditionInput = (body.condition ? String(body.condition) : "GOOD").toUpperCase()
-    const condition: Condition =
-      Object.values(Condition).includes(conditionInput as Condition)
-        ? (conditionInput as Condition)
-        : Condition.GOOD
-    const imageUrl = body.imageUrl ? String(body.imageUrl).trim() : null
-    const campusValue =
-      typeof body.campus === "string" ? body.campus.trim() : undefined
-    const campus = campusValue ? campusValue : undefined
-
-    if (!title || !description || priceCents <= 0) {
+    // Validation
+    const validation = await validateRequest(req, createListingSchema)
+    if ('error' in validation) {
       return NextResponse.json(
-        { error: "Missing required fields: title, description, price" },
+        { error: validation.error, details: validation.details },
         { status: 400 }
       )
     }
+    const { title, description, priceCents, condition, categoryId, imageUrl, campus } = validation.data
 
-    if (categoryId && Number.isNaN(categoryId)) {
-      return NextResponse.json({ error: "Invalid category" }, { status: 400 })
-    }
+    const supabase = await sbServer()
 
+    // Verify category exists if provided
     if (categoryId) {
-      const exists = await prisma.category.findUnique({ where: { id: categoryId } })
-      if (!exists) {
+      const { data: category } = await supabase
+        .from('Category')
+        .select('id')
+        .eq('id', categoryId)
+        .single()
+      
+      if (!category) {
         return NextResponse.json({ error: "Category not found" }, { status: 400 })
       }
     }
 
-    const listing = await prisma.listing.create({
-      data: {
+    const { data: listing, error } = await supabase
+      .from('Listing')
+      .insert({
         title,
         description,
         priceCents,
-        categoryId: categoryId ?? undefined,
+        categoryId: categoryId ?? null,
         condition,
-        imageUrl,
-        campus,
-        sellerId: profile.id,
-      },
-      include: {
-        category: true,
-        seller: { select: { id: true, name: true, avatarUrl: true } },
-      },
-    })
+        imageUrl: imageUrl ?? null,
+        campus: campus ?? null,
+        sellerId: user.id,
+      })
+      .select(`
+        *,
+        category:Category(*),
+        seller:Profile!Listing_sellerId_fkey(id, name, avatarUrl)
+      `)
+      .single()
+
+    if (error || !listing) {
+      console.error("Failed to create listing:", error)
+      return NextResponse.json({ error: "Failed to create listing" }, { status: 500 })
+    }
 
     return NextResponse.json({ data: listing }, { status: 201 })
   } catch (err: any) {
@@ -74,56 +74,69 @@ export async function POST(req: Request) {
 }
 
 // READ listings (kept for completeness)
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
+    // Rate limiting - lenient for public read operations
+    const rateLimitIdentifier = getRateLimitIdentifier(req, "listings:read")
+    const rateLimitResponse = rateLimit(rateLimitIdentifier, RateLimits.LENIENT)
+    if (rateLimitResponse) return rateLimitResponse
+
     const { searchParams } = new URL(req.url)
     const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1)
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 50)
     const skip = (page - 1) * limit
 
-    const where: Prisma.ListingWhereInput = {}
+    const supabase = await sbServer()
     const q = searchParams.get("q")
     const category = searchParams.get("category")
     const status = searchParams.get("status")?.toLowerCase()
+    
+    let query = supabase
+      .from('Listing')
+      .select(`
+        *,
+        category:Category(*),
+        seller:Profile!Listing_sellerId_fkey(id, name, avatarUrl)
+      `, { count: 'exact' })
+
+    // Search filter
     if (q) {
-      where.OR = [
-        { title: { contains: q, mode: "insensitive" } },
-        { description: { contains: q, mode: "insensitive" } },
-      ]
+      query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`)
     }
+
+    // Category filter
     if (category) {
-      where.category = {
-        OR: [
-          { name: { equals: category, mode: "insensitive" } },
-          { slug: { equals: category.toLowerCase() } },
-        ],
+      const { data: categoryData } = await supabase
+        .from('Category')
+        .select('id')
+        .or(`name.ilike.${category},slug.eq.${category.toLowerCase()}`)
+        .single()
+      
+      if (categoryData) {
+        query = query.eq('categoryId', categoryData.id)
       }
     }
 
+    // Status filter
     if (status === "active") {
-      where.isSold = false
+      query = query.eq('isSold', false)
     } else if (status === "sold") {
-      where.isSold = true
+      query = query.eq('isSold', true)
     }
 
-    const [items, total] = await Promise.all([
-      prisma.listing.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-        include: {
-          category: true,
-          seller: {
-            select: { id: true, name: true, avatarUrl: true },
-          },
-        },
-      }),
-      prisma.listing.count({ where }),
-    ])
+    const { data: items, error, count } = await query
+      .order('createdAt', { ascending: false })
+      .range(skip, skip + limit - 1)
+
+    if (error) {
+      console.error("GET /api/listings failed:", error)
+      return NextResponse.json({ error: "Failed to load listings" }, { status: 500 })
+    }
+
+    const total = count ?? 0
 
     return NextResponse.json({
-      data: items,
+      data: items || [],
       page,
       limit,
       total,

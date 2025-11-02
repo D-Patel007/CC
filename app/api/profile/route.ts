@@ -1,21 +1,29 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
-import { getCurrentUser } from "@/lib/auth"
+import { NextRequest, NextResponse } from "next/server"
+import { sbServer } from "@/lib/supabase/server"
+import { requireAuth } from "@/lib/auth-middleware"
+import { validateRequest, updateProfileSchema } from "@/lib/validation-schemas"
+import { rateLimit, RateLimits, getRateLimitIdentifier } from "@/lib/rate-limit"
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const user = await getCurrentUser()
-    if (!user || !user.supabaseUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    // Authentication
+    const authResult = await requireAuth(req)
+    if (authResult instanceof NextResponse) return authResult
+    const { user } = authResult
 
-    const profile = await prisma.profile.findUnique({
-      where: {
-        supabaseId: user.supabaseUser.id
-      }
-    })
+    // Rate limiting
+    const rateLimitIdentifier = getRateLimitIdentifier(req, "profile:read", user.id)
+    const rateLimitResponse = rateLimit(rateLimitIdentifier, RateLimits.MODERATE)
+    if (rateLimitResponse) return rateLimitResponse
 
-    if (!profile) {
+    const supabase = await sbServer()
+    const { data: profile, error } = await supabase
+      .from('Profile')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+
+    if (error || !profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 })
     }
 
@@ -26,27 +34,49 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(req: NextRequest) {
   try {
-    const user = await getCurrentUser()
-    if (!user || !user.supabaseUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Authentication
+    const authResult = await requireAuth(req)
+    if (authResult instanceof NextResponse) return authResult
+    const { user } = authResult
+
+    // Rate limiting
+    const rateLimitIdentifier = getRateLimitIdentifier(req, "profile:update", user.id)
+    const rateLimitResponse = rateLimit(rateLimitIdentifier, RateLimits.STRICT)
+    if (rateLimitResponse) return rateLimitResponse
+
+    // Validation
+    const validation = await validateRequest(req, updateProfileSchema)
+    if ('error' in validation) {
+      return NextResponse.json(
+        { error: validation.error, details: validation.details },
+        { status: 400 }
+      )
     }
 
-    const body = await request.json()
-    const { name, year, major, bio } = body
+    const { name, year, major, bio, avatarUrl } = validation.data
 
-    const profile = await prisma.profile.update({
-      where: {
-        supabaseId: user.supabaseUser.id
-      },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(year !== undefined && { year }),
-        ...(major !== undefined && { major }),
-        ...(bio !== undefined && { bio })
-      }
-    })
+    // Build update object with only provided fields
+    const updateData: any = {}
+    if (name !== undefined) updateData.name = name
+    if (year !== undefined) updateData.year = year
+    if (major !== undefined) updateData.major = major
+    if (bio !== undefined) updateData.bio = bio
+    if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl
+
+    const supabase = await sbServer()
+    const { data: profile, error } = await supabase
+      .from('Profile')
+      .update(updateData)
+      .eq('id', user.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error updating profile:", error)
+      return NextResponse.json({ error: "Failed to update profile" }, { status: 500 })
+    }
 
     return NextResponse.json({ data: profile })
   } catch (error) {

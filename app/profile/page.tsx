@@ -3,31 +3,22 @@ import { useEffect, useState } from "react"
 import { redirect } from "next/navigation"
 import { sb } from "@/lib/supabase/browser"
 import ListingCard from "@/components/ListingCard"
+import type { Database } from "@/lib/supabase/databaseTypes"
 
 type Profile = {
   id: number
   name: string | null
   avatarUrl: string | null
-  year: string | null
-  major: string | null
+  phone: string | null
+  campusArea: string | null
   bio: string | null
   createdAt: string
 }
-
-type Listing = {
-  id: number
-  title: string
-  description: string
-  priceCents: number
-  condition: string
-  imageUrl: string | null
-  isSold: boolean
-  createdAt: string
-  category: {
-    id: number
-    name: string
-  } | null
-  seller: {
+type ListingRow = Database['public']['Tables']['Listing']['Row']
+type CategoryRow = Database['public']['Tables']['Category']['Row']
+type ListingWithRelations = ListingRow & {
+  category?: CategoryRow | null
+  seller?: {
     id: number
     name: string | null
   }
@@ -36,16 +27,19 @@ type Listing = {
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [listings, setListings] = useState<Listing[]>([])
+  const [listings, setListings] = useState<ListingWithRelations[]>([])
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editForm, setEditForm] = useState({
     name: "",
-    year: "",
-    major: "",
+    phone: "",
+    campusArea: "",
     bio: ""
   })
   const [saving, setSaving] = useState(false)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   useEffect(() => {
     const supabase = sb()
@@ -70,10 +64,11 @@ export default function ProfilePage() {
         setProfile(data.data)
         setEditForm({
           name: data.data.name || "",
-          year: data.data.year || "",
-          major: data.data.major || "",
+          phone: data.data.phone || "",
+          campusArea: data.data.campusArea || "",
           bio: data.data.bio || ""
         })
+        setAvatarPreview(data.data.avatarUrl)
         
         // Fetch all user listings (including sold ones)
         const listingsRes = await fetch('/api/listings')
@@ -94,15 +89,48 @@ export default function ProfilePage() {
   async function handleSaveProfile() {
     setSaving(true)
     try {
+      let avatarUrl = profile?.avatarUrl
+
+      // Upload avatar if a new file was selected
+      if (avatarFile) {
+        setUploadingAvatar(true)
+        const uploadFormData = new FormData()
+        uploadFormData.append('file', avatarFile)
+        uploadFormData.append('type', 'photo') // Changed from 'avatar' to 'photo'
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadFormData
+        })
+
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json()
+          if (uploadData.data?.url) {
+            avatarUrl = uploadData.data.url
+          }
+        } else {
+          alert('Failed to upload avatar')
+          setUploadingAvatar(false)
+          setSaving(false)
+          return
+        }
+        setUploadingAvatar(false)
+      }
+
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm)
+        body: JSON.stringify({
+          ...editForm,
+          avatarUrl
+        })
       })
       
       const data = await res.json()
       if (data.data) {
         setProfile(data.data)
+        setAvatarPreview(data.data.avatarUrl)
+        setAvatarFile(null)
         setShowEditModal(false)
       }
     } catch (error) {
@@ -110,7 +138,34 @@ export default function ProfilePage() {
       alert('Failed to update profile')
     } finally {
       setSaving(false)
+      setUploadingAvatar(false)
     }
+  }
+
+  function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be less than 5MB')
+      return
+    }
+
+    setAvatarFile(file)
+    const previewUrl = URL.createObjectURL(file)
+    setAvatarPreview(previewUrl)
+  }
+
+  function removeAvatar() {
+    setAvatarFile(null)
+    setAvatarPreview(profile?.avatarUrl || null)
   }
 
   if (loading) {
@@ -130,51 +185,103 @@ export default function ProfilePage() {
     <div className="mx-auto max-w-6xl p-6">
       {/* Edit Profile Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-[var(--card-bg)] rounded-xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold mb-4">Edit Profile</h3>
             <div className="space-y-4">
+              {/* Avatar Upload */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Profile Picture</label>
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    {avatarPreview ? (
+                      <img 
+                        src={avatarPreview} 
+                        alt="Avatar preview"
+                        className="w-20 h-20 rounded-full object-cover border-2 border-primary"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-2xl font-bold text-primary">
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarSelect}
+                        className="hidden"
+                      />
+                      <span className="inline-block px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-hover transition">
+                        {avatarPreview ? 'Change Photo' : 'Upload Photo'}
+                      </span>
+                    </label>
+                    {avatarFile && (
+                      <button
+                        type="button"
+                        onClick={removeAvatar}
+                        className="text-sm text-error hover:underline"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-foreground-secondary mt-2">
+                  Recommended: Square image, max 5MB
+                </p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-1">Name</label>
                 <input
                   type="text"
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-border rounded-lg px-3 py-2 bg-[var(--input-bg)] text-foreground"
                   placeholder="Your name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Year</label>
-                <select
-                  value={editForm.year}
-                  onChange={(e) => setEditForm({ ...editForm, year: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
-                >
-                  <option value="">Select year</option>
-                  <option value="Freshman">Freshman</option>
-                  <option value="Sophomore">Sophomore</option>
-                  <option value="Junior">Junior</option>
-                  <option value="Senior">Senior</option>
-                  <option value="Graduate">Graduate</option>
-                </select>
+                <label className="block text-sm font-medium mb-1">Phone Number (Optional)</label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  className="w-full border border-border rounded-lg px-3 py-2 bg-[var(--input-bg)] text-foreground"
+                  placeholder="(123) 456-7890"
+                />
+                <p className="text-xs text-foreground-secondary mt-1">
+                  For easier meetup coordination
+                </p>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Major</label>
-                <input
-                  type="text"
-                  value={editForm.major}
-                  onChange={(e) => setEditForm({ ...editForm, major: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder="Your major"
-                />
+                <label className="block text-sm font-medium mb-1">Campus Area</label>
+                <select
+                  value={editForm.campusArea}
+                  onChange={(e) => setEditForm({ ...editForm, campusArea: e.target.value })}
+                  className="w-full border border-border rounded-lg px-3 py-2 bg-[var(--input-bg)] text-foreground"
+                >
+                  <option value="">Select area</option>
+                  <option value="North Campus">North Campus</option>
+                  <option value="South Campus">South Campus</option>
+                  <option value="Harbor Campus">Harbor Campus</option>
+                  <option value="Off-Campus">Off-Campus</option>
+                  <option value="Dorchester">Dorchester</option>
+                  <option value="Other">Other</option>
+                </select>
+                <p className="text-xs text-foreground-secondary mt-1">
+                  Where you usually meet for pickup/dropoff
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Bio</label>
                 <textarea
                   value={editForm.bio}
                   onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-border rounded-lg px-3 py-2 bg-[var(--input-bg)] text-foreground"
                   placeholder="Tell us about yourself"
                   rows={3}
                 />
@@ -191,9 +298,9 @@ export default function ProfilePage() {
               <button
                 onClick={handleSaveProfile}
                 className="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50"
-                disabled={saving}
+                disabled={saving || uploadingAvatar}
               >
-                {saving ? 'Saving...' : 'Save'}
+                {uploadingAvatar ? 'Uploading...' : saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -206,9 +313,17 @@ export default function ProfilePage() {
           <div className="bg-[var(--card-bg)] rounded-xl border border-border p-6 space-y-4">
             {/* Avatar */}
             <div className="flex flex-col items-center">
-              <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-3xl font-bold text-primary">
-                {name.charAt(0).toUpperCase()}
-              </div>
+              {profile.avatarUrl ? (
+                <img 
+                  src={profile.avatarUrl} 
+                  alt={name}
+                  className="w-20 h-20 rounded-full object-cover border-2 border-primary"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-3xl font-bold text-primary">
+                  {name.charAt(0).toUpperCase()}
+                </div>
+              )}
               <h2 className="mt-3 text-xl font-semibold">{name}</h2>
               <p className="text-sm text-foreground-secondary">@{email.split("@")[0]}</p>
             </div>
@@ -242,14 +357,18 @@ export default function ProfilePage() {
 
             {/* Additional Info */}
             <div className="pt-4 border-t border-border space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-foreground-secondary">Year</span>
-                <span className="font-medium">{profile.year || "Not set"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-foreground-secondary">Major</span>
-                <span className="font-medium">{profile.major || "Not set"}</span>
-              </div>
+              {profile.phone && (
+                <div className="flex justify-between">
+                  <span className="text-foreground-secondary">Phone</span>
+                  <span className="font-medium">{profile.phone}</span>
+                </div>
+              )}
+              {profile.campusArea && (
+                <div className="flex justify-between">
+                  <span className="text-foreground-secondary">Campus Area</span>
+                  <span className="font-medium">{profile.campusArea}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-foreground-secondary">Member Since</span>
                 <span className="font-medium">

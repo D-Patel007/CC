@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { sbServer } from '@/lib/supabase/server'
 
 function slugify(input: string) {
   return input
@@ -36,10 +36,18 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       return NextResponse.json({ error: 'No changes supplied' }, { status: 400 })
     }
 
-    const category = await prisma.category.update({
-      where: { id },
-      data: updates,
-    })
+    const supabase = await sbServer()
+    const { data: category, error } = await supabase
+      .from('Category')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error || !category) {
+      console.error(`PATCH /api/categories/${rawId} failed:`, error)
+      return NextResponse.json({ error: 'Failed to update category' }, { status: 500 })
+    }
 
     return NextResponse.json({ data: category })
   } catch (error) {
@@ -56,7 +64,17 @@ export async function DELETE(_req: Request, context: { params: Promise<{ id: str
   }
 
   try {
-    await prisma.category.delete({ where: { id } })
+    const supabase = await sbServer()
+    const { error } = await supabase
+      .from('Category')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error(`DELETE /api/categories/${rawId} failed:`, error)
+      return NextResponse.json({ error: 'Failed to delete category' }, { status: 500 })
+    }
+
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error(`DELETE /api/categories/${rawId} failed:`, error)
