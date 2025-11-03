@@ -2,6 +2,7 @@ import "./globals.css"
 import UserButton from "@/components/UserButton"
 import Footer from "@/components/Footer"
 import ThemeToggle from "@/components/ThemeToggle"
+import SearchBar from "@/components/SearchBar"
 import ClientProviders from "@/components/ClientProviders"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -29,11 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ClientProviders>
           {/* Header (always visible) */}
           <header className="sticky top-0 z-10 border-b border-border bg-[var(--background-elevated)] backdrop-blur">
-            <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 text-foreground">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 text-foreground">
               <div className="flex items-center gap-4">
                 <a href="/" className="flex items-center gap-3">
                   <img src="/logo.png" alt="Campus Connect" className="w-12 h-12 rounded-lg shadow-subtle" />
-                  <div className="font-semibold text-lg">
+                  <div className="font-semibold text-lg hidden sm:block">
                     <div className="text-foreground">Campus Connect</div>
                     <div className="text-xs text-foreground-secondary">For Beacons, by Beacons</div>
                   </div>
@@ -48,6 +49,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </nav>
               </div>
 
+              {/* Search Bar */}
+              <div className="flex-1 max-w-md hidden lg:block">
+                <SearchBar />
+              </div>
+
               <div className="flex items-center gap-3">
                 <ThemeToggle />
                 <div className="hidden sm:block">
@@ -57,6 +63,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <a href="/login" className="rounded-full bg-primary px-3 py-1 text-white text-sm shadow-subtle hover:bg-primary-hover transition">Log in</a>
                 </div>
               </div>
+            </div>
+            
+            {/* Mobile Search Bar */}
+            <div className="lg:hidden px-4 pb-3">
+              <SearchBar />
             </div>
           </header>
 
