@@ -25,6 +25,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [event, setEvent] = useState<Event | null>(null)
   const [eventId, setEventId] = useState<string | null>(null)
+  const [descriptionLength, setDescriptionLength] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -42,6 +43,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       
       if (data.data) {
         setEvent(data.data)
+        setDescriptionLength(data.data.description?.length || 0)
         if (data.data.imageUrl) {
           setImagePreview(data.data.imageUrl)
         }
@@ -251,9 +253,12 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             required
             minLength={10}
             rows={5}
+            onChange={(e) => setDescriptionLength(e.target.value.length)}
             className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <p className="mt-1 text-xs text-gray-500">Minimum 10 characters to help attendees understand your event.</p>
+          <p className="mt-1 text-xs text-gray-500">
+            {descriptionLength} / 5000 characters (minimum 10 required)
+          </p>
         </div>
 
         {/* Date and Time */}

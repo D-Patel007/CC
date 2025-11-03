@@ -7,6 +7,7 @@ export default function NewEventPage() {
   const [loading, setLoading] = useState(false)
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [descriptionLength, setDescriptionLength] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -146,8 +147,12 @@ export default function NewEventPage() {
             placeholder="Tell people what your event is about..."
             required
             rows={5}
+            onChange={(e) => setDescriptionLength(e.target.value.length)}
             className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <p className="mt-1 text-xs text-gray-500">
+            {descriptionLength} / 5000 characters (minimum 10 required)
+          </p>
         </div>
 
         {/* Date and Time */}
