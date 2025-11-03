@@ -88,6 +88,8 @@ export default function NewEventPage() {
         capacity: data.capacity ? parseInt(data.capacity as string) : null,
       }
 
+      console.log("Event payload:", payload)
+
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,6 +101,7 @@ export default function NewEventPage() {
         router.push(`/events/${event.id}`)
       } else {
         const error = await res.json()
+        console.error("Event creation failed:", error)
         alert(error.error || "Failed to create event")
       }
     } catch (error) {

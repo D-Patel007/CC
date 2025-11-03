@@ -71,8 +71,9 @@ export async function POST(req: NextRequest) {
     // Validation
     const validation = await validateRequest(req, createEventSchema)
     if ('error' in validation) {
+      console.error("Event validation failed:", validation.details?.issues)
       return NextResponse.json(
-        { error: validation.error, details: validation.details },
+        { error: validation.error, details: validation.details?.issues },
         { status: 400 }
       )
     }
