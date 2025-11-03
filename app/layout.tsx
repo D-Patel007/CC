@@ -3,7 +3,6 @@ import UserButton from "@/components/UserButton"
 import Footer from "@/components/Footer"
 import ThemeToggle from "@/components/ThemeToggle"
 import NotificationBell from "@/components/NotificationBell"
-import SearchBar from "@/components/SearchBar"
 import ClientProviders from "@/components/ClientProviders"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -29,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-background text-foreground flex flex-col transition-colors">
         <ClientProviders>
-          {/* Header (always visible) - Compact Single Row */}
+          {/* Header (always visible) - Clean and Simple */}
           <header className="sticky top-0 z-50 border-b border-border bg-[var(--background-elevated)]/95 backdrop-blur-lg shadow-sm">
             <div className="mx-auto max-w-7xl px-6 py-3 text-foreground">
               <div className="flex items-center justify-between gap-6">
@@ -45,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     </div>
                   </a>
                   
-                  {/* Navigation - inline with logo */}
+                  {/* Navigation */}
                   <nav className="hidden lg:flex items-center gap-1">
                     <a href="/" className="px-3 py-1.5 rounded-lg text-sm font-medium text-foreground-secondary hover:text-primary hover:bg-primary/10 transition-all">
                       Marketplace
@@ -62,37 +61,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   </nav>
                 </div>
 
-                {/* Right: Search + Actions */}
-                <div className="flex items-center gap-3">
-                  {/* Compact Search - Desktop only */}
-                  <div className="hidden md:block w-64 lg:w-80">
-                    <SearchBar />
+                {/* Right: Actions */}
+                <div className="flex items-center gap-2">
+                  <a href="/listings/new" className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary-hover transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Post</span>
+                  </a>
+                  <ThemeToggle />
+                  <NotificationBell />
+                  <div className="hidden sm:block">
+                    <UserButton />
                   </div>
-                  
-                  <div className="flex items-center gap-2 border-l border-border pl-3">
-                    <a href="/listings/new" className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary-hover transition-all">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      <span>Post</span>
+                  <div className="sm:hidden">
+                    <a href="/login" className="rounded-lg bg-primary px-3 py-1.5 text-white text-sm font-semibold hover:bg-primary-hover transition">
+                      Login
                     </a>
-                    <ThemeToggle />
-                    <NotificationBell />
-                    <div className="hidden sm:block">
-                      <UserButton />
-                    </div>
-                    <div className="sm:hidden">
-                      <a href="/login" className="rounded-lg bg-primary px-3 py-1.5 text-white text-sm font-semibold hover:bg-primary-hover transition">
-                        Login
-                      </a>
-                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Mobile Search Bar */}
-              <div className="md:hidden mt-3 pb-1">
-                <SearchBar />
               </div>
             </div>
           </header>

@@ -2,6 +2,7 @@
 import Link from "next/link"
 import ListingCard from "@/components/ListingCard"
 import CategoryTabs from "@/components/CategoryTabs"
+import SearchBar from "@/components/SearchBar"
 import type { Database } from "@/lib/supabase/databaseTypes"
 
 type Listing = Database['public']['Tables']['Listing']['Row']
@@ -170,7 +171,13 @@ export default async function Marketplace({
 
       {/* Main Marketplace Section */}
       <div className="mx-auto max-w-6xl px-6 py-12">
-        <h2 className="text-3xl font-bold mb-6 text-foreground">Browse Marketplace</h2>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+          <h2 className="text-3xl font-bold text-foreground">Browse Marketplace</h2>
+          {/* Search Bar - Prominent placement */}
+          <div className="w-full md:w-96">
+            <SearchBar />
+          </div>
+        </div>
         <CategoryTabs categories={categories} />
 
         {listings.length === 0 ? (
