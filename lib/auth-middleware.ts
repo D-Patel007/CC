@@ -48,25 +48,62 @@ export async function requireAuth(
                    email?.split('@')[0] ||
                    'Anonymous User'
 
+      console.log('Creating profile for user:', {
+        supabaseId: supabaseUser.id,
+        email,
+        name
+      })
+
       const { data: newProfile, error: insertError } = await supabase
         .from('Profile')
         .insert({
           supabaseId: supabaseUser.id,
           name,
-          avatarUrl: supabaseUser.user_metadata?.avatar_url || null
+          avatarUrl: supabaseUser.user_metadata?.avatar_url || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         })
         .select('id, supabaseId, name')
         .single()
 
-      if (insertError || !newProfile) {
-        console.error('Failed to create profile:', insertError)
-        return NextResponse.json(
-          { error: "Failed to create user profile" },
-          { status: 500 }
-        )
+      if (insertError) {
+        console.error('Profile creation failed:', {
+          error: insertError,
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint
+        })
+        
+        // If it's a duplicate key error, try to fetch the existing profile
+        if (insertError.code === '23505') {
+          console.log('Duplicate key detected, fetching existing profile')
+          const { data: existingProfile } = await supabase
+            .from('Profile')
+            .select('id, supabaseId, name')
+            .eq('supabaseId', supabaseUser.id)
+            .single()
+          
+          if (existingProfile) {
+            profile = existingProfile
+          } else {
+            return NextResponse.json(
+              { error: "Failed to create user profile - duplicate key but profile not found" },
+              { status: 500 }
+            )
+          }
+        } else {
+          return NextResponse.json(
+            { 
+              error: "Failed to create user profile",
+              details: insertError.message 
+            },
+            { status: 500 }
+          )
+        }
+      } else {
+        profile = newProfile
       }
-
-      profile = newProfile
     }
 
     if (!profile || !profile.supabaseId) {
