@@ -14,6 +14,7 @@ export type AuthenticatedRequest = NextRequest & {
 /**
  * Middleware to authenticate requests using Supabase session.
  * Returns the authenticated user's profile or sends 401 response.
+ * Automatically creates profile if it doesn't exist.
  */
 export async function requireAuth(
   req: NextRequest
@@ -33,13 +34,42 @@ export async function requireAuth(
     }
 
     // Fetch user profile from database using Supabase
-    const { data: profile, error: profileError } = await supabase
+    let { data: profile, error: profileError } = await supabase
       .from('Profile')
       .select('id, supabaseId, name')
       .eq('supabaseId', supabaseUser.id)
-      .single()
+      .maybeSingle()
 
-    if (profileError || !profile || !profile.supabaseId) {
+    // If profile doesn't exist, create it
+    if (!profile) {
+      const email = supabaseUser.email ?? null
+      const name = supabaseUser.user_metadata?.name || 
+                   supabaseUser.user_metadata?.full_name ||
+                   email?.split('@')[0] ||
+                   'Anonymous User'
+
+      const { data: newProfile, error: insertError } = await supabase
+        .from('Profile')
+        .insert({
+          supabaseId: supabaseUser.id,
+          name,
+          avatarUrl: supabaseUser.user_metadata?.avatar_url || null
+        })
+        .select('id, supabaseId, name')
+        .single()
+
+      if (insertError || !newProfile) {
+        console.error('Failed to create profile:', insertError)
+        return NextResponse.json(
+          { error: "Failed to create user profile" },
+          { status: 500 }
+        )
+      }
+
+      profile = newProfile
+    }
+
+    if (!profile || !profile.supabaseId) {
       return NextResponse.json(
         { error: "User profile not found" },
         { status: 404 }

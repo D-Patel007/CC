@@ -75,7 +75,7 @@ export default function MyListingsPage() {
           onClick={() => setFilter("all")}
           className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
             filter === "all"
-              ? "border border-primary bg-primary/15 text-foreground dark:border-transparent dark:bg-primary dark:text-white shadow-subtle"
+              ? "border border-primary bg-primary/15 text-primary shadow-subtle"
               : "border border-border bg-[var(--background-secondary)] text-foreground-secondary hover:text-foreground"
           }`}
         >
@@ -85,7 +85,7 @@ export default function MyListingsPage() {
           onClick={() => setFilter("active")}
           className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
             filter === "active"
-              ? "border border-primary bg-primary/15 text-foreground dark:border-transparent dark:bg-primary dark:text-white shadow-subtle"
+              ? "border border-primary bg-primary/15 text-primary shadow-subtle"
               : "border border-border bg-[var(--background-secondary)] text-foreground-secondary hover:text-foreground"
           }`}
         >
@@ -95,7 +95,7 @@ export default function MyListingsPage() {
           onClick={() => setFilter("sold")}
           className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
             filter === "sold"
-              ? "border border-primary bg-primary/15 text-foreground dark:border-transparent dark:bg-primary dark:text-white shadow-subtle"
+              ? "border border-primary bg-primary/15 text-primary shadow-subtle"
               : "border border-border bg-[var(--background-secondary)] text-foreground-secondary hover:text-foreground"
           }`}
         >
