@@ -28,7 +28,7 @@ export const createEventSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().min(10).max(5000),
   startTime: z.string().datetime(),
-  endTime: z.string().datetime(),
+  endTime: z.string().datetime().optional().nullable(),
   location: z.string().max(200).optional().nullable(),
   imageUrl: z.string().url().optional().nullable(),
   category: z.string().max(50).optional().nullable(),

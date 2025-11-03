@@ -62,10 +62,36 @@ export default function NewEventPage() {
         data.imageUrl = imageUrl
       }
 
+      // Combine date and time fields into ISO datetime strings
+      const eventDate = data.eventDate as string
+      const startTimeStr = data.startTime as string
+      const endTimeStr = data.endTime as string | undefined
+
+      if (!eventDate || !startTimeStr) {
+        alert('Event date and start time are required')
+        return
+      }
+
+      // Combine date + time into ISO format
+      const startDateTime = `${eventDate}T${startTimeStr}:00`
+      const endDateTime = endTimeStr ? `${eventDate}T${endTimeStr}:00` : null
+
+      // Build the payload with combined datetime fields
+      const payload = {
+        title: data.title,
+        description: data.description,
+        startTime: startDateTime,
+        endTime: endDateTime,
+        location: data.location || null,
+        imageUrl: data.imageUrl || null,
+        category: data.category || null,
+        capacity: data.capacity ? parseInt(data.capacity as string) : null,
+      }
+
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
       })
 
       if (res.ok) {
