@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
     }
     
     const supabase = await sbServer()
+    const now = new Date().toISOString()
     const { data: event, error } = await supabase
       .from('Event')
       .insert({
@@ -101,7 +102,9 @@ export async function POST(req: NextRequest) {
         imageUrl: imageUrl || null,
         capacity: capacity || null,
         category: category || null,
-        organizerId: user.id
+        organizerId: user.id,
+        createdAt: now,
+        updatedAt: now
       })
       .select(`
         *,
