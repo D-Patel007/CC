@@ -280,6 +280,82 @@ a:hover {
 }
 
 /* ---------------------------------------------
+   🌌 Light mode overrides - ensure visibility
+--------------------------------------------- */
+
+/* Force ALL text to be dark and readable in light mode */
+.light * {
+  color: #1e293b !important;
+}
+
+/* Specific overrides for different text weights */
+.light h1, .light h2, .light h3, .light h4, .light h5, .light h6 {
+  color: #0f172a !important;
+}
+
+.light p, .light span, .light div, .light label {
+  color: #334155 !important;
+}
+
+.light .text-gray-500,
+.light .text-gray-600,
+.light .text-gray-400,
+.light .text-muted-foreground,
+.light .text-foreground-secondary {
+  color: #475569 !important;
+}
+
+.light .text-gray-700,
+.light .text-gray-800,
+.light .text-gray-900,
+.light .text-foreground {
+  color: #0f172a !important;
+}
+
+/* Input and form elements */
+.light input,
+.light textarea,
+.light select {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder,
+.light .placeholder\:text-muted-foreground::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
+/* Buttons should maintain their own colors */
+.light button {
+  color: inherit !important;
+}
+
+/* Fix notification dropdown and card backgrounds */
+.light .bg-card {
+  background-color: #ffffff !important;
+}
+
+.dark .bg-card {
+  background-color: #1e293b !important;
+}
+
+.light .bg-gray-50 {
+  background-color: #f8fafc !important;
+}
+
+.light .bg-gray-100,
+.light .bg-gray-200 {
+  background-color: #f1f5f9 !important;
+}
+
+.light .border-gray-200,
+.light .border-gray-300 {
+  border-color: #e2e8f0 !important;
+}
+
+/* ---------------------------------------------
    🌌 Dark theme overrides for legacy utilities
 --------------------------------------------- */
 .dark .bg-white,

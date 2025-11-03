@@ -313,23 +313,23 @@ export default function ListingDetailPage({ params }: PageProps) {
         <div className="border-t p-6 bg-gray-50">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <p className="text-gray-500">Posted</p>
+              <p className="text-foreground-secondary">Posted</p>
               <p className="font-medium">
                 {new Date(listing.createdAt).toLocaleDateString()}
               </p>
             </div>
             <div>
-              <p className="text-gray-500">Last Updated</p>
+              <p className="text-foreground-secondary">Last Updated</p>
               <p className="font-medium">
                 {new Date(listing.updatedAt).toLocaleDateString()}
               </p>
             </div>
             <div>
-              <p className="text-gray-500">Listing ID</p>
+              <p className="text-foreground-secondary">Listing ID</p>
               <p className="font-medium">#{listing.id}</p>
             </div>
             <div>
-              <p className="text-gray-500">Status</p>
+              <p className="text-foreground-secondary">Status</p>
               <p className="font-medium">
                 {listing.isSold ? "Sold" : "Available"}
               </p>

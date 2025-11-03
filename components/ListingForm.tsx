@@ -159,7 +159,7 @@ export default function ListingForm({ categories }: { categories: { id: number; 
           className="w-full rounded-xl border border-border bg-[var(--input-bg)] p-3 text-foreground placeholder:text-muted-foreground focus:border-primary" 
           rows={5} 
         />
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-foreground-secondary">
           {descriptionLength} / 5000 characters (minimum 10 required)
         </p>
       </div>

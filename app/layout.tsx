@@ -3,6 +3,7 @@ import UserButton from "@/components/UserButton"
 import Footer from "@/components/Footer"
 import ThemeToggle from "@/components/ThemeToggle"
 import SearchBar from "@/components/SearchBar"
+import NotificationBell from "@/components/NotificationBell"
 import ClientProviders from "@/components/ClientProviders"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
               <div className="flex items-center gap-3">
                 <ThemeToggle />
+                <NotificationBell />
                 <div className="hidden sm:block">
                   <UserButton />
                 </div>

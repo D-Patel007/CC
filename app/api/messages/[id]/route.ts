@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth-middleware"
 import { canAccessConversation, canModifyMessage, assertAccess, assertOwnership, AuthorizationError } from "@/lib/authorization"
 import { validateRequest, createMessageSchema } from "@/lib/validation-schemas"
 import { rateLimit, RateLimits, getRateLimitIdentifier } from "@/lib/rate-limit"
+import { notifyNewMessage } from "@/lib/notifications"
 
 // GET /api/messages/[id] - Get all messages in a conversation
 export async function GET(
@@ -173,6 +174,22 @@ export async function POST(
       .from('Conversation')
       .update({ updatedAt: new Date().toISOString() })
       .eq('id', conversationId)
+
+    // Send notification to recipient
+    const { data: senderProfile } = await supabase
+      .from('Profile')
+      .select('name')
+      .eq('id', user.id)
+      .single();
+    
+    if (senderProfile) {
+      await notifyNewMessage(
+        receiverId,
+        senderProfile.name || 'Someone',
+        content || 'Sent a message',
+        conversationId.toString()
+      );
+    }
 
     // Broadcast the new message to all clients listening to this conversation
     // Note: In production, you'd use Supabase Realtime or a message queue

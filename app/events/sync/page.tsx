@@ -45,7 +45,7 @@ export default function EventsSyncPage() {
     <div className="mx-auto max-w-4xl">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Sync UMass Boston Events</h1>
-        <p className="mt-1 text-gray-500">
+        <p className="mt-1 text-foreground-secondary">
           Import official UMass Boston events into Campus Connect
         </p>
       </div>
@@ -101,7 +101,7 @@ export default function EventsSyncPage() {
               Import to Database
             </button>
           </div>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm text-foreground-secondary mt-2">
             {previewMode
               ? 'Preview mode will show events without saving them'
               : '⚠️ Import mode will save events to the database'}
@@ -152,14 +152,14 @@ export default function EventsSyncPage() {
                   className="border rounded-lg p-4 hover:bg-gray-50 transition"
                 >
                   <div className="font-semibold">{event.title}</div>
-                  <div className="text-sm text-gray-600 mt-1">
+                  <div className="text-sm text-foreground-secondary mt-1">
                     <div>🕐 {event.startTime} {event.endTime && `- ${event.endTime}`}</div>
                     <div>📍 {event.location}</div>
                     {event.organization && (
                       <div>🏢 {event.organization}</div>
                     )}
                     {event.description && previewMode && (
-                      <div className="mt-2 text-gray-500 text-xs line-clamp-2">
+                      <div className="mt-2 text-foreground-secondary text-xs line-clamp-2">
                         {event.description}
                       </div>
                     )}

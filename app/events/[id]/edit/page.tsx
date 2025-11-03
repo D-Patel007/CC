@@ -219,7 +219,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           ← Back to Event
         </Link>
         <h1 className="text-3xl font-bold mt-4">Edit Event</h1>
-        <p className="text-gray-500 mt-1">Update your event details</p>
+        <p className="text-foreground-secondary mt-1">Update your event details</p>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border p-6 space-y-4">
@@ -256,7 +256,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             onChange={(e) => setDescriptionLength(e.target.value.length)}
             className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-foreground-secondary">
             {descriptionLength} / 5000 characters (minimum 10 required)
           </p>
         </div>
@@ -388,7 +388,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           <button
             type="button"
             onClick={() => router.push(`/events/${eventId}`)}
-            className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 font-medium transition"
+            className="flex-1 bg-background-secondary text-foreground py-3 rounded-lg hover:bg-border font-medium transition"
           >
             Cancel
           </button>
