@@ -1,31 +1,51 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------
-   ✨ Modern Light Theme - Clean & Professional
+   🎓 UMass Boston Brand Colors & Theme
+   For Beacons, by Beacons
 --------------------------------------------- */
 :root,
 .light {
   color-scheme: light;
+  
+  /* UMass Boston Official Colors - Enhanced Palette */
+  --umb-royal-blue: #003da5;
+  --umb-blue-hover: #002d7a;
+  --umb-blue-light: #0057d9;
+  --umb-red: #d42e12;
+  --umb-navy: #002855;
+  --beacon-gold: #ffb81c;
+  --beacon-gold-light: #ffd666;
+  --umb-light-blue: #e8f0f9;
+  --umb-sky-blue: #d4e7f7;
+  
   /* Backgrounds - light surfaces and depth */
-  --background: #f7f9fc;
-  --background-secondary: #eef2f8;
+  --background: #f8fafb;
+  --background-secondary: #eef4f7;
   --background-elevated: #ffffff;
+  --background-subtle: #f1f7fb;
   --foreground: #0f172a;
-  --foreground-secondary: #334155;
+  --foreground-secondary: #475569;
+  --foreground-muted: #64748b;
   --muted: #64748b;
   --muted-foreground: #64748b;
 
-  /* Primary palette */
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-light: rgba(37, 99, 235, 0.15);
+  /* Primary palette - UMB Blue */
+  --primary: var(--umb-royal-blue);
+  --primary-hover: var(--umb-blue-hover);
+  --primary-light: rgba(0, 61, 165, 0.15);
 
-  /* Accent colors */
-  --secondary: #7c3aed;
-  --accent: #0ea5e9;
+  /* Accent colors - Beacon themed */
+  --secondary: var(--beacon-gold);
+  --accent: var(--umb-blue-light);
+  --accent-light: var(--beacon-gold-light);
+  --accent-red: var(--umb-red);
   --success: #059669;
+  --success-light: #d1fae5;
   --warning: #f59e0b;
-  --error: #dc2626;
+  --warning-light: #fef3c7;
+  --error: var(--umb-red);
+  --error-light: #fee2e2;
 
   /* UI Elements */
   --border: #d7deeb;
@@ -33,21 +53,21 @@
   --card-bg: #ffffff;
   --card-elevated: #ffffff;
   --input-bg: #ffffff;
-  --ring: rgba(59, 130, 246, 0.35);
+  --ring: rgba(0, 61, 165, 0.35);
 
-  /* Shadows - Subtle depth */
-  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.08);
-  --shadow: 0 8px 16px -6px rgba(15, 23, 42, 0.12);
-  --shadow-lg: 0 16px 32px -10px rgba(15, 23, 42, 0.14);
-  --shadow-xl: 0 30px 40px -15px rgba(15, 23, 42, 0.16);
+  /* Shadows - UMB Blue tinted */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 61, 165, 0.08);
+  --shadow: 0 8px 16px -6px rgba(0, 61, 165, 0.12);
+  --shadow-lg: 0 16px 32px -10px rgba(0, 61, 165, 0.14);
+  --shadow-xl: 0 30px 40px -15px rgba(0, 61, 165, 0.16);
 }
 
 /* ---------------------------------------------
-   ✨ Modern Dark Theme - Sleek & Eye-friendly
+   🌙 Modern Dark Theme - UMB Navy
 --------------------------------------------- */
 .dark {
   color-scheme: dark;
-  /* Backgrounds - deep slate gradients */
+  /* Backgrounds - deep navy gradients */
   --background: #050816;
   --background-secondary: #0d1224;
   --background-elevated: #111a2d;
@@ -279,6 +299,68 @@ a:hover {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Hero gradient backgrounds */
+.hero-gradient {
+  background: linear-gradient(135deg, var(--umb-light-blue) 0%, var(--background-elevated) 50%, var(--umb-sky-blue) 100%);
+}
+
+.dark .hero-gradient {
+  background: linear-gradient(135deg, rgba(0, 61, 165, 0.1) 0%, var(--background-elevated) 50%, rgba(0, 40, 85, 0.15) 100%);
+}
+
+/* Section spacing - UMB style */
+.section-padding {
+  padding: 4rem 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .section-padding {
+    padding: 6rem 1.5rem;
+  }
+}
+
+/* Rounded corners consistent with modern design */
+.rounded-modern {
+  border-radius: 12px;
+}
+
+.rounded-modern-lg {
+  border-radius: 16px;
+}
+
+/* Improved hover lift effect */
+.hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Stats number styling */
+.stat-number {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primary);
+}
+
+@media (min-width: 768px) {
+  .stat-number {
+    font-size: 4rem;
+  }
+}
+
+/* Testimonial quote styling */
+.quote-mark {
+  font-family: Georgia, serif;
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--primary);
+  opacity: 0.2;
+}
+
 /* ---------------------------------------------
    🌌 Light mode overrides - ensure visibility
 --------------------------------------------- */
@@ -339,6 +421,33 @@ a:hover {
 
 .dark .bg-card {
   background-color: #1e293b !important;
+}
+
+/* Force readable text in BOTH modes */
+.dark * {
+  color: #f1f5f9 !important;
+}
+
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  color: #f8fafc !important;
+}
+
+.dark p, .dark span, .dark div, .dark label {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-foreground {
+  color: #f8fafc !important;
+}
+
+.dark .text-foreground-secondary,
+.dark .text-muted-foreground {
+  color: #cbd5e1 !important;
+}
+
+/* Keep buttons with their own colors */
+.dark button {
+  color: inherit !important;
 }
 
 .light .bg-gray-50 {

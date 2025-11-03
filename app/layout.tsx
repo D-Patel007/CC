@@ -2,7 +2,6 @@ import "./globals.css"
 import UserButton from "@/components/UserButton"
 import Footer from "@/components/Footer"
 import ThemeToggle from "@/components/ThemeToggle"
-import SearchBar from "@/components/SearchBar"
 import NotificationBell from "@/components/NotificationBell"
 import ClientProviders from "@/components/ClientProviders"
 
@@ -30,29 +29,36 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background text-foreground flex flex-col transition-colors">
         <ClientProviders>
           {/* Header (always visible) */}
-          <header className="sticky top-0 z-10 border-b border-border bg-[var(--background-elevated)] backdrop-blur">
-            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 text-foreground">
-              <div className="flex items-center gap-4">
-                <a href="/" className="flex items-center gap-3">
-                  <img src="/logo.png" alt="Campus Connect" className="w-12 h-12 rounded-lg shadow-subtle" />
-                  <div className="font-semibold text-lg hidden sm:block">
-                    <div className="text-foreground">Campus Connect</div>
-                    <div className="text-xs text-foreground-secondary">For Beacons, by Beacons</div>
+          <header className="sticky top-0 z-50 border-b-2 border-border bg-[var(--background-elevated)]/95 backdrop-blur-lg shadow-subtle">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 text-foreground">
+              <div className="flex items-center gap-6">
+                <a href="/" className="flex items-center gap-3 group">
+                  <div className="relative">
+                    <img src="/logo.png" alt="Campus Connect" className="w-12 h-12 rounded-modern shadow-lg transition-all group-hover:scale-110 group-hover:shadow-xl" />
+                    <div className="absolute -inset-1 bg-primary/20 rounded-modern blur-sm opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
+                  </div>
+                  <div className="font-semibold hidden sm:block">
+                    <div className="text-foreground font-bold text-xl">Campus Connect</div>
+                    <div className="text-xs text-primary font-medium">For Beacons, by Beacons 🎓</div>
                   </div>
                 </a>
-                <nav className="hidden md:flex items-center gap-4 ml-6 text-sm text-foreground-secondary">
-                  <a href="/" className="hover:underline hover:text-primary">Marketplace</a>
-                  <a href="/events" className="hover:underline hover:text-primary">Events</a>
-                  <a href="/messages" className="hover:underline hover:text-primary">Messages</a>
-                  <a href="/my" className="hover:underline hover:text-primary">My Listings</a>
-                  <a href="/listings/new" className="hover:underline hover:text-primary">+ Create</a>
-                  <a href="/profile" className="hover:underline hover:text-primary">Profile</a>
+                <nav className="hidden lg:flex items-center gap-1 ml-4">
+                  <a href="/" className="px-4 py-2 rounded-modern text-sm font-medium text-foreground-secondary hover:text-primary hover:bg-primary/10 transition-all">
+                    Marketplace
+                  </a>
+                  <a href="/events" className="px-4 py-2 rounded-modern text-sm font-medium text-foreground-secondary hover:text-primary hover:bg-primary/10 transition-all">
+                    Events
+                  </a>
+                  <a href="/messages" className="px-4 py-2 rounded-modern text-sm font-medium text-foreground-secondary hover:text-primary hover:bg-primary/10 transition-all">
+                    Messages
+                  </a>
+                  <a href="/my" className="px-4 py-2 rounded-modern text-sm font-medium text-foreground-secondary hover:text-primary hover:bg-primary/10 transition-all">
+                    My Listings
+                  </a>
+                  <a href="/listings/new" className="px-4 py-2 rounded-modern text-sm font-bold text-white bg-primary hover:bg-primary-hover transition-all shadow-subtle">
+                    + Create
+                  </a>
                 </nav>
-              </div>
-
-              {/* Search Bar */}
-              <div className="flex-1 max-w-md hidden lg:block">
-                <SearchBar />
               </div>
 
               <div className="flex items-center gap-3">
@@ -62,14 +68,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <UserButton />
                 </div>
                 <div className="sm:hidden">
-                  <a href="/login" className="rounded-full bg-primary px-3 py-1 text-white text-sm shadow-subtle hover:bg-primary-hover transition">Log in</a>
+                  <a href="/login" className="rounded-modern bg-primary px-4 py-2 text-white text-sm font-semibold shadow-subtle hover:bg-primary-hover transition">
+                    Log in
+                  </a>
                 </div>
               </div>
-            </div>
-            
-            {/* Mobile Search Bar */}
-            <div className="lg:hidden px-4 pb-3">
-              <SearchBar />
             </div>
           </header>
 
