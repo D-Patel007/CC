@@ -128,6 +128,36 @@ export default function ListingDetailPage({ params }: PageProps) {
     }
   }
 
+  async function handleMessageSeller() {
+    if (!listing) return
+    
+    setActionLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('sellerId', listing.seller.id.toString())
+      
+      const res = await fetch('/api/conversations/create', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.redirect) {
+          router.push(data.redirect)
+        }
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Failed to create conversation')
+      }
+    } catch (error) {
+      console.error('Failed to create conversation:', error)
+      alert('Failed to create conversation')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -236,16 +266,13 @@ export default function ListingDetailPage({ params }: PageProps) {
             {/* Actions */}
             <div className="border-t border-border pt-4 space-y-2">
               {!isOwnListing && !listing.isSold && (
-                <form action="/api/conversations/create" method="POST">
-                  <input type="hidden" name="listingId" value={listing.id} />
-                  <input type="hidden" name="sellerId" value={listing.seller.id} />
-                  <button 
-                    type="submit"
-                    className="w-full bg-primary text-white py-3 rounded-lg hover:bg-primary-hover transition font-medium shadow-subtle"
-                  >
-                    💬 Message Seller
-                  </button>
-                </form>
+                <button 
+                  onClick={handleMessageSeller}
+                  disabled={actionLoading}
+                  className="w-full bg-primary text-white py-3 rounded-lg hover:bg-primary-hover transition font-medium shadow-subtle disabled:opacity-50"
+                >
+                  {actionLoading ? 'Opening conversation...' : '💬 Message Seller'}
+                </button>
               )}
               
               {isOwnListing && (

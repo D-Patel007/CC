@@ -43,8 +43,11 @@ export async function POST(req: NextRequest) {
     const existingConversation = existingConversations?.[0]
 
     if (existingConversation) {
-      // Redirect to messages page with existing conversation
-      return NextResponse.redirect(new URL(`/messages?conversation=${existingConversation.id}`, req.url))
+      // Return JSON with redirect URL for client-side redirect
+      return NextResponse.json(
+        { redirect: `/messages?conversation=${existingConversation.id}` },
+        { status: 200 }
+      )
     }
 
     // Create new conversation
@@ -62,8 +65,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to create conversation" }, { status: 500 })
     }
 
-    // Redirect to messages page with new conversation
-    return NextResponse.redirect(new URL(`/messages?conversation=${conversation.id}`, req.url))
+    // Return JSON with redirect URL for client-side redirect
+    return NextResponse.json(
+      { redirect: `/messages?conversation=${conversation.id}` },
+      { status: 200 }
+    )
 
   } catch (err: any) {
     console.error("POST /api/conversations/create error:", err)
