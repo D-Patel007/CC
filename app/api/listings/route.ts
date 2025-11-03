@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const now = new Date().toISOString()
     const { data: listing, error } = await supabase
       .from('Listing')
       .insert({
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
         imageUrl: imageUrl ?? null,
         campus: campus ?? null,
         sellerId: user.id,
+        createdAt: now,
+        updatedAt: now
       })
       .select(`
         *,
