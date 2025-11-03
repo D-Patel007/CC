@@ -72,9 +72,9 @@ export default function NewEventPage() {
         return
       }
 
-      // Combine date + time into ISO format
-      const startDateTime = `${eventDate}T${startTimeStr}:00`
-      const endDateTime = endTimeStr ? `${eventDate}T${endTimeStr}:00` : null
+      // Combine date + time into ISO format with timezone (Z for UTC)
+      const startDateTime = `${eventDate}T${startTimeStr}:00Z`
+      const endDateTime = endTimeStr ? `${eventDate}T${endTimeStr}:00Z` : null
 
       // Build the payload with combined datetime fields
       const payload = {
@@ -85,7 +85,7 @@ export default function NewEventPage() {
         location: data.location || null,
         imageUrl: data.imageUrl || null,
         category: data.category || null,
-        capacity: data.capacity ? parseInt(data.capacity as string) : null,
+        capacity: data.capacity && data.capacity !== '' ? parseInt(data.capacity as string, 10) : null,
       }
 
       console.log("Event payload:", payload)
