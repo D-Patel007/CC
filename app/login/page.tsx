@@ -5,15 +5,33 @@ import { sb } from "@/lib/supabase/browser"
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [msg, setMsg] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setIsLoading(true)
+    setMsg("")
+    
     const supabase = sb()
+    
+    // Use the full URL for better mobile compatibility
+    const redirectUrl = `${window.location.origin}/auth/callback`
+    
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: { 
+        emailRedirectTo: redirectUrl,
+        shouldCreateUser: true,
+      },
     })
-    setMsg(error ? error.message : "Check your email for the login link ✨")
+    
+    setIsLoading(false)
+    
+    if (error) {
+      setMsg(`Error: ${error.message}`)
+    } else {
+      setMsg("Check your email for the login link ✨")
+    }
   }
 
   return (
@@ -28,20 +46,28 @@ export default function LoginPage() {
 
         <form onSubmit={onSubmit} className="space-y-4">
           <input
-            className="w-full rounded-lg border border-border bg-[var(--input-bg)] px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-primary"
+            className="w-full rounded-lg border border-border bg-[var(--input-bg)] px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-primary disabled:opacity-50"
             type="email"
             required
+            disabled={isLoading}
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="your.name001@umb.edu"
           />
-          <button className="w-full rounded-lg bg-primary py-3 text-white font-medium shadow-subtle hover:bg-primary-hover transition">
-            Send Magic Link
+          <button 
+            disabled={isLoading}
+            className="w-full rounded-lg bg-primary py-3 text-white font-medium shadow-subtle hover:bg-primary-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? "Sending..." : "Send Magic Link"}
           </button>
         </form>
 
         {msg && (
-          <p className="text-sm text-center text-foreground bg-[rgba(129,140,248,0.12)] rounded-lg p-3">
+          <p className={`text-sm text-center rounded-lg p-3 ${
+            msg.startsWith('Error') 
+              ? 'text-error bg-error/10' 
+              : 'text-foreground bg-primary/10'
+          }`}>
             {msg}
           </p>
         )}
