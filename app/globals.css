@@ -63,44 +63,50 @@
 }
 
 /* ---------------------------------------------
-   🌙 Modern Dark Theme - UMB Navy
+   🌙 Modern Dark Theme - Lighter & More Breathable
 --------------------------------------------- */
 .dark {
   color-scheme: dark;
-  /* Backgrounds - deep navy gradients */
-  --background: #050816;
-  --background-secondary: #0d1224;
-  --background-elevated: #111a2d;
-  --foreground: #e2e8f0;
-  --foreground-secondary: #94a3b8;
+  /* Backgrounds - lighter navy, more breathable */
+  --background: #0f172a;
+  --background-secondary: #1e293b;
+  --background-elevated: #1e293b;
+  --background-subtle: #0f172a;
+  --foreground: #f1f5f9;
+  --foreground-secondary: #cbd5e1;
+  --foreground-muted: #94a3b8;
   --muted: #64758b;
-  --muted-foreground: #9ca3af;
+  --muted-foreground: #94a3b8;
 
-  /* Primary palette - electric indigo */
-  --primary: #818cf8;
-  --primary-hover: #6366f1;
-  --primary-light: rgba(129, 140, 248, 0.18);
+  /* Primary palette - brighter blue for better visibility */
+  --primary: #60a5fa;
+  --primary-hover: #3b82f6;
+  --primary-light: rgba(96, 165, 250, 0.15);
 
-  /* Accent + semantic tones */
-  --secondary: #f97316;
-  --accent: #22d3ee;
+  /* Accent + semantic tones - warmer and more vibrant */
+  --secondary: #fbbf24;
+  --accent: #60a5fa;
+  --accent-light: #fde047;
   --success: #34d399;
+  --success-light: rgba(52, 211, 153, 0.1);
   --warning: #fbbf24;
+  --warning-light: rgba(251, 191, 36, 0.1);
   --error: #f87171;
+  --error-light: rgba(248, 113, 113, 0.1);
 
-  /* Surfaces and borders */
-  --border: #1f2a3a;
-  --border-strong: #2b394e;
-  --card-bg: #101829;
-  --card-elevated: #152238;
-  --input-bg: #0b1221;
-  --ring: rgba(129, 140, 248, 0.45);
+  /* Surfaces and borders - softer */
+  --border: #334155;
+  --border-strong: #475569;
+  --card-bg: #1e293b;
+  --card-elevated: #1e293b;
+  --input-bg: #0f172a;
+  --ring: rgba(96, 165, 250, 0.3);
 
-  /* Atmospheric shadows */
-  --shadow-sm: 0 6px 12px -8px rgba(12, 17, 30, 0.7);
-  --shadow: 0 16px 32px -12px rgba(8, 12, 24, 0.65);
-  --shadow-lg: 0 28px 45px -20px rgba(5, 8, 20, 0.7);
-  --shadow-xl: 0 48px 70px -32px rgba(1, 3, 12, 0.7);
+  /* Softer shadows */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 35px -10px rgba(0, 0, 0, 0.5);
 }
 
 /* Also support system preference for fallback */

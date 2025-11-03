@@ -83,45 +83,55 @@ export default async function Marketplace({
 
   return (
     <main className="min-h-screen pb-20">
-      {/* Hero Section - UMB Inspired */}
-      <section className="relative overflow-hidden hero-gradient py-16 md:py-24">
-        {/* Background decorative elements */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(0,61,165,0.15),_transparent_50%)]" aria-hidden />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_rgba(255,184,28,0.08),_transparent_50%)]" aria-hidden />
+      {/* Hero Section - Enhanced with warmth and visual interest */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-20 md:py-28">
+        {/* Decorative elements */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-30" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-secondary/20 rounded-full blur-3xl opacity-30" />
+        </div>
         
         <div className="relative mx-auto max-w-6xl px-6">
-          <div className="text-center space-y-6 animate-fade-in">
-            {/* Main heading */}
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
-              Campus Connect
+          <div className="text-center space-y-8 animate-fade-in">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-semibold">
+              <span>🎓</span>
+              <span>Official UMass Boston Student Marketplace</span>
+            </div>
+            
+            {/* Main heading - with gradient */}
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+              <span className="bg-gradient-to-r from-foreground via-primary to-foreground bg-clip-text text-transparent">
+                Campus Connect
+              </span>
             </h1>
             
             {/* Subheading */}
-            <p className="text-2xl md:text-3xl font-semibold text-primary">
+            <p className="text-3xl md:text-4xl font-bold text-secondary">
               For Beacons, by Beacons
             </p>
             
             {/* Description */}
             <p className="text-lg md:text-xl text-foreground-secondary max-w-3xl mx-auto leading-relaxed">
-              Buy, sell, and trade with fellow UMass Boston students. Discover a modern marketplace tailored to campus life—sustainable, affordable, and built for our community.
+              Buy, sell, and trade with fellow UMass Boston students. Discover a modern marketplace tailored to campus life—<span className="text-secondary font-semibold">sustainable</span>, <span className="text-secondary font-semibold">affordable</span>, and built for our community.
             </p>
             
             {/* CTA Buttons */}
-            <div className="flex flex-wrap gap-4 justify-center pt-6">
+            <div className="flex flex-wrap gap-4 justify-center pt-4">
               <Link 
                 href="/listings/new"
-                className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white font-semibold px-8 py-4 rounded-modern shadow-subtle hover:shadow-float transition-all duration-300 hover:-translate-y-1"
+                className="group inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white font-semibold px-8 py-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Post a Listing
               </Link>
               <Link 
                 href="/events"
-                className="inline-flex items-center gap-2 bg-secondary hover:bg-accent-light text-foreground font-semibold px-8 py-4 rounded-modern border-2 border-border hover:border-primary shadow-subtle hover:shadow-float transition-all duration-300 hover:-translate-y-1"
+                className="group inline-flex items-center gap-2 bg-secondary hover:bg-accent-light text-foreground font-semibold px-8 py-4 rounded-lg border-2 border-secondary shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 Browse Events
