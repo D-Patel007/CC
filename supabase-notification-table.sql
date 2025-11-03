@@ -31,7 +31,7 @@ CREATE POLICY "Users can view own notifications"
   USING (
     EXISTS (
       SELECT 1 FROM "Profile"
-      WHERE "Profile".id = "Notification"."userId"
+      WHERE "Profile"."id" = "Notification"."userId"
       AND "Profile"."supabaseId" = auth.uid()::text
     )
   );
@@ -49,7 +49,7 @@ CREATE POLICY "Users can update own notifications"
   USING (
     EXISTS (
       SELECT 1 FROM "Profile"
-      WHERE "Profile".id = "Notification"."userId"
+      WHERE "Profile"."id" = "Notification"."userId"
       AND "Profile"."supabaseId" = auth.uid()::text
     )
   );
@@ -61,7 +61,7 @@ CREATE POLICY "Users can delete own notifications"
   USING (
     EXISTS (
       SELECT 1 FROM "Profile"
-      WHERE "Profile".id = "Notification"."userId"
+      WHERE "Profile"."id" = "Notification"."userId"
       AND "Profile"."supabaseId" = auth.uid()::text
     )
   );
