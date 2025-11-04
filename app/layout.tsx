@@ -58,12 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="flex items-center gap-3">
                 <ThemeToggle />
                 <NotificationBell />
-                <div className="hidden sm:block">
-                  <UserButton />
-                </div>
-                <div className="sm:hidden">
-                  <a href="/login" className="rounded-full bg-primary px-3 py-1 text-white text-sm shadow-subtle hover:bg-primary-hover transition">Log in</a>
-                </div>
+                <UserButton />
               </div>
             </div>
             
