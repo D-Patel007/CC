@@ -1,19 +1,37 @@
 "use client"
 import { useEffect, useState } from "react"
 import { sb } from "@/lib/supabase/browser"
+import type { User } from "@supabase/supabase-js"
 
 export default function UserButton() {
   const [user, setUser] = useState<{ email: string; name?: string } | null>(null)
   
   useEffect(() => {
-    sb().auth.getUser().then(({ data }) => {
-      if (data.user) {
+    const supabase = sb()
+    
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
         setUser({
-          email: data.user.email || "",
-          name: data.user.user_metadata?.name || data.user.email?.split("@")[0]
+          email: session.user.email || "",
+          name: session.user.user_metadata?.name || session.user.email?.split("@")[0]
         })
       }
     })
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({
+          email: session.user.email || "",
+          name: session.user.user_metadata?.name || session.user.email?.split("@")[0]
+        })
+      } else {
+        setUser(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   if (!user) {

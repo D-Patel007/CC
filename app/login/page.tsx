@@ -39,7 +39,7 @@ export default function LoginPage() {
   async function verifyCode(e: React.FormEvent) {
     e.preventDefault()
     setIsLoading(true)
-    setMsg("")
+    setMsg("Verifying code...")
     
     const supabase = sb()
     
@@ -67,11 +67,15 @@ export default function LoginPage() {
     
     if (!data.session) {
       console.error("No session returned after OTP verification")
-      setMsg("Error: Failed to create session. Please try again.")
+      setMsg("Error: No session created. Check if code is correct.")
       return
     }
     
+    setMsg("✅ Code verified! Setting up your account...")
     console.log("Session created successfully, checking profile...")
+    
+    // Wait a moment for session to propagate
+    await new Promise(resolve => setTimeout(resolve, 500))
     
     // Check if user needs onboarding
     try {
@@ -81,16 +85,21 @@ export default function LoginPage() {
         // If they don't have a name set, redirect to onboarding
         if (!profileData.data?.name) {
           console.log("New user - redirecting to onboarding")
+          setMsg("Redirecting to onboarding...")
+          await new Promise(resolve => setTimeout(resolve, 500))
           router.push('/onboarding')
           return
         }
       }
     } catch (err) {
       console.error('Error checking profile:', err)
-      // Continue anyway
+      setMsg("Profile check failed, but logging you in anyway...")
+      await new Promise(resolve => setTimeout(resolve, 1000))
     }
     
     console.log("Existing user - redirecting to home")
+    setMsg("Success! Redirecting...")
+    await new Promise(resolve => setTimeout(resolve, 500))
     router.push('/')
   }
 
