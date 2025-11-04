@@ -42,33 +42,56 @@ export default function LoginPage() {
     setMsg("")
     
     const supabase = sb()
+    
+    console.log("Verifying OTP code for:", email)
+    
     const { data, error } = await supabase.auth.verifyOtp({
       email,
       token,
       type: 'email',
     })
     
+    console.log("OTP verification result:", { 
+      hasSession: !!data.session, 
+      hasUser: !!data.user,
+      error: error?.message 
+    })
+    
     setIsLoading(false)
     
     if (error) {
+      console.error("OTP verification error:", error)
       setMsg(`Error: ${error.message}`)
-    } else if (data.session) {
-      // Check if user needs onboarding
-      try {
-        const profileRes = await fetch('/api/profile')
-        if (profileRes.ok) {
-          const profileData = await profileRes.json()
-          if (!profileData.data?.name) {
-            router.push('/onboarding')
-            return
-          }
-        }
-      } catch (err) {
-        console.error('Error checking profile:', err)
-      }
-      
-      router.push('/')
+      return
+    } 
+    
+    if (!data.session) {
+      console.error("No session returned after OTP verification")
+      setMsg("Error: Failed to create session. Please try again.")
+      return
     }
+    
+    console.log("Session created successfully, checking profile...")
+    
+    // Check if user needs onboarding
+    try {
+      const profileRes = await fetch('/api/profile')
+      if (profileRes.ok) {
+        const profileData = await profileRes.json()
+        // If they don't have a name set, redirect to onboarding
+        if (!profileData.data?.name) {
+          console.log("New user - redirecting to onboarding")
+          router.push('/onboarding')
+          return
+        }
+      }
+    } catch (err) {
+      console.error('Error checking profile:', err)
+      // Continue anyway
+    }
+    
+    console.log("Existing user - redirecting to home")
+    router.push('/')
   }
 
   return (
