@@ -17,10 +17,12 @@ export default function LoginPage() {
     setMsg("")
     
     const supabase = sb()
+    // Request OTP code (not magic link)
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { 
         shouldCreateUser: true,
+        // Don't send a redirect URL - this ensures we get a code, not a link
       },
     })
     
@@ -76,7 +78,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold mb-2 text-foreground">Welcome to Campus Connect</h1>
           <p className="text-foreground-secondary">
             {step === "email" 
-              ? "Enter your official UMass Boston email to receive a verification code."
+              ? "Enter your UMass Boston email to receive a verification code."
               : "Enter the 6-digit code sent to your email."
             }
           </p>
