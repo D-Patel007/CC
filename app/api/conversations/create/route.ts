@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse
 
     const formData = await req.formData()
-    const sellerId = parseInt(formData.get('sellerId') as string)
+    const sellerIdStr = formData.get('sellerId') as string
+    const sellerId = parseInt(sellerIdStr)
     
     if (isNaN(sellerId)) {
       return NextResponse.json({ error: "Invalid seller ID" }, { status: 400 })
@@ -28,6 +29,18 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await sbServer()
+    
+    // Verify seller exists
+    const { data: sellerProfile, error: sellerError } = await supabase
+      .from('Profile')
+      .select('id')
+      .eq('id', sellerId)
+      .single()
+    
+    if (sellerError || !sellerProfile) {
+      return NextResponse.json({ error: "Seller not found" }, { status: 404 })
+    }
+
     // Check if conversation already exists between these two users
     const { data: existingConversations, error: findError } = await supabase
       .from('Conversation')
@@ -50,12 +63,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Create new conversation
+    // Create new conversation with required timestamps
+    const now = new Date().toISOString()
     const { data: conversation, error: createError } = await supabase
       .from('Conversation')
       .insert({
         user1Id: user.id,
-        user2Id: sellerId
+        user2Id: sellerId,
+        createdAt: now,
+        updatedAt: now
       })
       .select()
       .single()
