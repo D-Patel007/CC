@@ -16,6 +16,13 @@ export default function LoginPage() {
     setIsLoading(true)
     setMsg("")
     
+    // Validate UMass Boston email domain
+    if (!email.toLowerCase().endsWith('@umb.edu')) {
+      setIsLoading(false)
+      setMsg("Error: Please use your UMass Boston email address (@umb.edu)")
+      return
+    }
+    
     const supabase = sb()
     // Request OTP code (not magic link)
     const { error } = await supabase.auth.signInWithOtp({
@@ -110,7 +117,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold mb-2 text-foreground">Welcome to Campus Connect</h1>
           <p className="text-foreground-secondary">
             {step === "email" 
-              ? "Enter your UMass Boston email to receive a verification code."
+              ? "Enter your UMass Boston email (@umb.edu) to receive a verification code."
               : "Enter the 6-digit code sent to your email."
             }
           </p>
@@ -118,15 +125,22 @@ export default function LoginPage() {
 
         {step === "email" ? (
           <form onSubmit={sendCode} className="space-y-4">
-            <input
-              className="w-full rounded-lg border border-border bg-[var(--input-bg)] px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-primary disabled:opacity-50"
-              type="email"
-              required
-              disabled={isLoading}
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="your.name001@umb.edu"
-            />
+            <div>
+              <input
+                className="w-full rounded-lg border border-border bg-[var(--input-bg)] px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-primary disabled:opacity-50"
+                type="email"
+                required
+                disabled={isLoading}
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="your.name001@umb.edu"
+                pattern=".*@umb\.edu$"
+                title="Please use your UMass Boston email address (@umb.edu)"
+              />
+              <p className="text-xs text-foreground-secondary mt-2">
+                ⚠️ Only UMass Boston students and staff can sign up
+              </p>
+            </div>
             <button 
               disabled={isLoading}
               className="w-full rounded-lg bg-primary py-3 text-white font-medium shadow-subtle hover:bg-primary-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
