@@ -78,17 +78,17 @@ export default function SearchBar() {
   const totalResults = results.listings.length + results.events.length
 
   return (
-    <div ref={searchRef} className="relative w-full max-w-md">
+    <div ref={searchRef} className="relative w-full">
       <div className="relative">
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search listings & events..."
-          className="w-full rounded-lg border border-border bg-[var(--input-bg)] px-4 py-2 pl-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full rounded-xl border-2 border-border bg-[var(--input-bg)] px-5 py-3.5 pl-14 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-subtle"
         />
         <svg
-          className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground"
+          className="absolute left-4 top-4 h-6 w-6 text-muted-foreground"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -101,7 +101,7 @@ export default function SearchBar() {
           />
         </svg>
         {isLoading && (
-          <div className="absolute right-3 top-2.5">
+          <div className="absolute right-4 top-4">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         )}

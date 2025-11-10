@@ -29,6 +29,11 @@ export type Database = {
           campusArea: string | null
           isVerified: boolean
           verifiedEmail: string | null
+          role: 'user' | 'admin' | 'moderator'
+          isAdmin: boolean
+          isSuspended: boolean
+          suspendedUntil: string | null
+          suspensionReason: string | null
         }
         Insert: {
           id?: number
@@ -44,6 +49,11 @@ export type Database = {
           campusArea?: string | null
           isVerified?: boolean
           verifiedEmail?: string | null
+          role?: 'user' | 'admin' | 'moderator'
+          isAdmin?: boolean
+          isSuspended?: boolean
+          suspendedUntil?: string | null
+          suspensionReason?: string | null
         }
         Update: {
           id?: number
@@ -59,6 +69,11 @@ export type Database = {
           campusArea?: string | null
           isVerified?: boolean
           verifiedEmail?: string | null
+          role?: 'user' | 'admin' | 'moderator'
+          isAdmin?: boolean
+          isSuspended?: boolean
+          suspendedUntil?: string | null
+          suspensionReason?: string | null
         }
       }
       Category: {
@@ -256,6 +271,205 @@ export type Database = {
           id?: number
           eventId?: number
           userId?: number
+          createdAt?: string
+        }
+      }
+      ProhibitedItem: {
+        Row: {
+          id: number
+          type: 'keyword' | 'regex' | 'category' | 'url_pattern'
+          pattern: string
+          severity: 'low' | 'medium' | 'high' | 'critical'
+          action: 'flag' | 'auto_reject' | 'warn'
+          category: string | null
+          description: string | null
+          isActive: boolean
+          createdBy: number | null
+          createdAt: string
+          updatedAt: string
+        }
+        Insert: {
+          id?: number
+          type: 'keyword' | 'regex' | 'category' | 'url_pattern'
+          pattern: string
+          severity?: 'low' | 'medium' | 'high' | 'critical'
+          action?: 'flag' | 'auto_reject' | 'warn'
+          category?: string | null
+          description?: string | null
+          isActive?: boolean
+          createdBy?: number | null
+          createdAt?: string
+          updatedAt?: string
+        }
+        Update: {
+          id?: number
+          type?: 'keyword' | 'regex' | 'category' | 'url_pattern'
+          pattern?: string
+          severity?: 'low' | 'medium' | 'high' | 'critical'
+          action?: 'flag' | 'auto_reject' | 'warn'
+          category?: string | null
+          description?: string | null
+          isActive?: boolean
+          createdBy?: number | null
+          createdAt?: string
+          updatedAt?: string
+        }
+      }
+      FlaggedContent: {
+        Row: {
+          id: number
+          contentType: 'listing' | 'message' | 'profile' | 'event'
+          contentId: number
+          userId: number
+          reason: string
+          severity: 'low' | 'medium' | 'high' | 'critical'
+          status: 'pending' | 'approved' | 'rejected' | 'deleted'
+          source: 'auto' | 'user_report' | 'admin'
+          details: Json | null
+          reviewedBy: number | null
+          reviewedAt: string | null
+          reviewNotes: string | null
+          createdAt: string
+          updatedAt: string
+        }
+        Insert: {
+          id?: number
+          contentType: 'listing' | 'message' | 'profile' | 'event'
+          contentId: number
+          userId: number
+          reason: string
+          severity?: 'low' | 'medium' | 'high' | 'critical'
+          status?: 'pending' | 'approved' | 'rejected' | 'deleted'
+          source?: 'auto' | 'user_report' | 'admin'
+          details?: Json | null
+          reviewedBy?: number | null
+          reviewedAt?: string | null
+          reviewNotes?: string | null
+          createdAt?: string
+          updatedAt?: string
+        }
+        Update: {
+          id?: number
+          contentType?: 'listing' | 'message' | 'profile' | 'event'
+          contentId?: number
+          userId?: number
+          reason?: string
+          severity?: 'low' | 'medium' | 'high' | 'critical'
+          status?: 'pending' | 'approved' | 'rejected' | 'deleted'
+          source?: 'auto' | 'user_report' | 'admin'
+          details?: Json | null
+          reviewedBy?: number | null
+          reviewedAt?: string | null
+          reviewNotes?: string | null
+          createdAt?: string
+          updatedAt?: string
+        }
+      }
+      UserStrike: {
+        Row: {
+          id: number
+          userId: number
+          reason: string
+          severity: 'minor' | 'major' | 'severe'
+          flaggedContentId: number | null
+          issuedBy: number | null
+          notes: string | null
+          isActive: boolean
+          createdAt: string
+        }
+        Insert: {
+          id?: number
+          userId: number
+          reason: string
+          severity?: 'minor' | 'major' | 'severe'
+          flaggedContentId?: number | null
+          issuedBy?: number | null
+          notes?: string | null
+          isActive?: boolean
+          createdAt?: string
+        }
+        Update: {
+          id?: number
+          userId?: number
+          reason?: string
+          severity?: 'minor' | 'major' | 'severe'
+          flaggedContentId?: number | null
+          issuedBy?: number | null
+          notes?: string | null
+          isActive?: boolean
+          createdAt?: string
+        }
+      }
+      ModerationLog: {
+        Row: {
+          id: number
+          adminId: number
+          action: string
+          targetType: string
+          targetId: number
+          details: Json | null
+          createdAt: string
+        }
+        Insert: {
+          id?: number
+          adminId: number
+          action: string
+          targetType: string
+          targetId: number
+          details?: Json | null
+          createdAt?: string
+        }
+        Update: {
+          id?: number
+          adminId?: number
+          action?: string
+          targetType?: string
+          targetId?: number
+          details?: Json | null
+          createdAt?: string
+        }
+      }
+      UserReport: {
+        Row: {
+          id: number
+          reporterId: number
+          contentType: 'listing' | 'message' | 'profile' | 'event'
+          contentId: number
+          category: string
+          description: string | null
+          status: 'pending' | 'investigating' | 'resolved' | 'dismissed'
+          flaggedContentId: number | null
+          resolvedBy: number | null
+          resolvedAt: string | null
+          resolution: string | null
+          createdAt: string
+        }
+        Insert: {
+          id?: number
+          reporterId: number
+          contentType: 'listing' | 'message' | 'profile' | 'event'
+          contentId: number
+          category: string
+          description?: string | null
+          status?: 'pending' | 'investigating' | 'resolved' | 'dismissed'
+          flaggedContentId?: number | null
+          resolvedBy?: number | null
+          resolvedAt?: string | null
+          resolution?: string | null
+          createdAt?: string
+        }
+        Update: {
+          id?: number
+          reporterId?: number
+          contentType?: 'listing' | 'message' | 'profile' | 'event'
+          contentId?: number
+          category?: string
+          description?: string | null
+          status?: 'pending' | 'investigating' | 'resolved' | 'dismissed'
+          flaggedContentId?: number | null
+          resolvedBy?: number | null
+          resolvedAt?: string | null
+          resolution?: string | null
           createdAt?: string
         }
       }

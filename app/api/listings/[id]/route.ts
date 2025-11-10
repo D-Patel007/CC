@@ -62,7 +62,26 @@ export async function PATCH(
       .eq('id', parseInt(id))
       .single()
 
-    if (!listing || listing.sellerId !== currentUser.profile.id) {
+    console.log('🔍 Update listing authorization check:', {
+      listingId: id,
+      listingSellerId: listing?.sellerId,
+      listingSellerIdType: typeof listing?.sellerId,
+      currentUserProfileId: currentUser.profile?.id,
+      currentUserProfileIdType: typeof currentUser.profile?.id,
+      matches: listing?.sellerId === currentUser.profile?.id,
+      strictEqual: listing?.sellerId === currentUser.profile?.id,
+      looseEqual: listing?.sellerId == currentUser.profile?.id
+    })
+
+    if (!listing) {
+      return NextResponse.json(
+        { error: 'Listing not found' },
+        { status: 404 }
+      )
+    }
+
+    // Compare using Number() to handle potential type mismatches
+    if (Number(listing.sellerId) !== Number(currentUser.profile.id)) {
       return NextResponse.json(
         { error: 'Not authorized to update this listing' },
         { status: 403 }
@@ -125,7 +144,26 @@ export async function DELETE(
       .eq('id', parseInt(id))
       .single()
 
-    if (!listing || listing.sellerId !== currentUser.profile.id) {
+    console.log('🔍 Delete listing authorization check:', {
+      listingId: id,
+      listingSellerId: listing?.sellerId,
+      listingSellerIdType: typeof listing?.sellerId,
+      currentUserProfileId: currentUser.profile?.id,
+      currentUserProfileIdType: typeof currentUser.profile?.id,
+      matches: listing?.sellerId === currentUser.profile?.id,
+      strictEqual: listing?.sellerId === currentUser.profile?.id,
+      looseEqual: listing?.sellerId == currentUser.profile?.id
+    })
+
+    if (!listing) {
+      return NextResponse.json(
+        { error: 'Listing not found' },
+        { status: 404 }
+      )
+    }
+
+    // Compare using loose equality to handle potential type mismatches
+    if (Number(listing.sellerId) !== Number(currentUser.profile.id)) {
       return NextResponse.json(
         { error: 'Not authorized to delete this listing' },
         { status: 403 }

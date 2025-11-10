@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useRealtimeNotifications } from '@/lib/hooks/useRealtimeNotifications';
 
 interface Notification {
   id: string;
@@ -12,32 +13,34 @@ interface Notification {
   relatedId?: string;
   relatedType?: string;
   createdAt: string;
+  userId: number;
 }
 
 export default function NotificationBell() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Fetch notifications
-  const fetchNotifications = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/notifications?limit=10');
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.notifications?.filter((n: Notification) => !n.read).length || 0);
+  // Get current user ID
+  useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        const res = await fetch('/api/profile');
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentUserId(data.id);
+        }
+      } catch (error) {
+        console.error('Error fetching user ID:', error);
       }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    fetchUserId();
+  }, []);
+
+  // Use real-time notifications hook
+  const { notifications, unreadCount, setNotifications, setUnreadCount } = useRealtimeNotifications(currentUserId);
 
   // Mark notification as read
   const markAsRead = async (notificationId: string) => {
@@ -99,23 +102,6 @@ export default function NotificationBell() {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Fetch on mount and when dropdown opens
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchNotifications();
-    }
-  }, [isOpen]);
-
-  // Poll for new notifications every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   return (

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     const { data: profile, error } = await supabase
       .from('Profile')
       .select('*')
-      .eq('id', user.id)
+      .eq('supabaseId', user.supabaseId)
       .single()
 
     if (error || !profile) {
@@ -69,7 +69,7 @@ export async function PATCH(req: NextRequest) {
     const { data: profile, error } = await supabase
       .from('Profile')
       .update(updateData)
-      .eq('id', user.id)
+      .eq('supabaseId', user.supabaseId)
       .select()
       .single()
 

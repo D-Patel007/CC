@@ -3,6 +3,7 @@ import { Suspense, useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { useRealtimeMessages } from "@/lib/hooks/useRealtimeMessages"
 import { validateAudioFile, validateFileSize, validateImageFile } from "@/lib/validation"
+import ReportButton from "@/components/ReportButton"
 
 type Conversation = {
   id: number
@@ -516,6 +517,16 @@ function MessagesPageInner() {
                               >
                                 Unsend
                               </button>
+                            )}
+                            {/* Report button - only show for other user's messages on hover */}
+                            {!isOwn && hoveredMessageId === msg.id && (
+                              <div className="absolute -right-16 top-1/2 -translate-y-1/2">
+                                <ReportButton 
+                                  contentType="message" 
+                                  contentId={msg.id} 
+                                  size="sm"
+                                />
+                              </div>
                             )}
                           </div>
                         </div>

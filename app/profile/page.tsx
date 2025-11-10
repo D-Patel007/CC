@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { redirect } from "next/navigation"
 import { sb } from "@/lib/supabase/browser"
 import ListingCard from "@/components/ListingCard"
+import VerifiedBadge from "@/components/VerifiedBadge"
 import type { Database } from "@/lib/supabase/databaseTypes"
 
 type Profile = {
@@ -10,9 +11,13 @@ type Profile = {
   name: string | null
   avatarUrl: string | null
   phone: string | null
+  phoneVerified: boolean
   campusArea: string | null
   bio: string | null
   createdAt: string
+  averageRating: number
+  totalRatings: number
+  totalTransactions: number
 }
 type ListingRow = Database['public']['Tables']['Listing']['Row']
 type CategoryRow = Database['public']['Tables']['Category']['Row']
@@ -326,6 +331,12 @@ export default function ProfilePage() {
               )}
               <h2 className="mt-3 text-xl font-semibold">{name}</h2>
               <p className="text-sm text-foreground-secondary">@{email.split("@")[0]}</p>
+              
+              {/* Verification Badges */}
+              <div className="flex gap-2 mt-2">
+                <VerifiedBadge type="email" size="sm" />
+                {profile.phoneVerified && <VerifiedBadge type="phone" size="sm" />}
+              </div>
             </div>
 
             {/* Stats */}
@@ -338,7 +349,28 @@ export default function ProfilePage() {
                 <div className="text-2xl font-bold">{listings.filter(l => l.isSold).length}</div>
                 <div className="text-sm text-foreground-secondary">Sold</div>
               </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">{profile.totalTransactions || 0}</div>
+                <div className="text-sm text-foreground-secondary">Deals</div>
+              </div>
             </div>
+
+            {/* Rating Display */}
+            {profile.totalRatings > 0 && (
+              <div className="py-3 border-t border-b border-border">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span key={star} className={star <= Math.round(profile.averageRating) ? 'text-yellow-400' : 'text-gray-400'}>
+                        ⭐
+                      </span>
+                    ))}
+                  </div>
+                  <span className="font-bold">{profile.averageRating.toFixed(1)}</span>
+                  <span className="text-sm text-foreground-secondary">({profile.totalRatings} {profile.totalRatings === 1 ? 'rating' : 'ratings'})</span>
+                </div>
+              </div>
+            )}
 
             {/* Buttons */}
             <div className="space-y-2">
@@ -358,9 +390,27 @@ export default function ProfilePage() {
             {/* Additional Info */}
             <div className="pt-4 border-t border-border space-y-2 text-sm">
               {profile.phone && (
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-foreground-secondary">Phone</span>
-                  <span className="font-medium">{profile.phone}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{profile.phone}</span>
+                    {profile.phoneVerified && (
+                      <span className="text-xs text-success">✓</span>
+                    )}
+                  </div>
+                </div>
+              )}
+              {!profile.phoneVerified && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                    📱 Verify your phone number to build trust with other users
+                  </p>
+                  <a 
+                    href="/verify-phone"
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Verify Phone Number →
+                  </a>
                 </div>
               )}
               {profile.campusArea && (

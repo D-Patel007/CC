@@ -1,6 +1,7 @@
 ﻿import { sbServer } from "@/lib/supabase/server"
 import ListingCard from "@/components/ListingCard"
 import CategoryTabs from "@/components/CategoryTabs"
+import SearchBar from "@/components/SearchBar"
 import type { Database } from "@/lib/supabase/databaseTypes"
 
 type Listing = Database['public']['Tables']['Listing']['Row']
@@ -82,17 +83,22 @@ export default async function Marketplace({
 
   return (
     <main className="min-h-screen pb-20">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
+      {/* Hero Section with Search */}
+      <section className="relative overflow-hidden mb-8">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(129,140,248,0.45),_transparent_60%)]" aria-hidden />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(14,116,144,0.28),_transparent_65%)]" aria-hidden />
         <div className="relative mx-auto max-w-6xl px-6 py-12 rounded-3xl border border-border bg-[var(--background-elevated)] shadow-float">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 text-foreground animate-fade-in">
             UMass Boston Marketplace
           </h1>
-          <p className="text-lg md:text-xl text-foreground-secondary max-w-2xl">
+          <p className="text-lg md:text-xl text-foreground-secondary max-w-2xl mb-6">
             Buy, sell, and trade with fellow Beacons. Discover a modern marketplace tailored to campus life.
           </p>
+          
+          {/* Prominent Search Bar */}
+          <div className="max-w-2xl">
+            <SearchBar />
+          </div>
         </div>
       </section>
 

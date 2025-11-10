@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import SearchBar from "@/components/SearchBar"
 
 type Event = {
   id: number
@@ -123,25 +124,32 @@ export default function EventsPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">UMass Boston Events</h1>
-          <p className="mt-1 text-foreground-secondary">Discover and join campus events</p>
+      {/* Header with Search */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">UMass Boston Events</h1>
+            <p className="mt-1 text-foreground-secondary">Discover and join campus events</p>
+          </div>
+          <div className="flex gap-2">
+            <Link
+              href="/events/sync"
+              className="rounded-lg bg-secondary px-4 py-2 text-white shadow-subtle hover:opacity-90 transition"
+            >
+              🔄 Sync UMB Events
+            </Link>
+            <Link
+              href="/events/new"
+              className="rounded-lg bg-primary px-4 py-2 text-white shadow-subtle hover:bg-primary-hover transition"
+            >
+              ➕ Create Event
+            </Link>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Link
-            href="/events/sync"
-            className="rounded-lg bg-secondary px-4 py-2 text-white shadow-subtle hover:opacity-90 transition"
-          >
-            🔄 Sync UMB Events
-          </Link>
-          <Link
-            href="/events/new"
-            className="rounded-lg bg-primary px-4 py-2 text-white shadow-subtle hover:bg-primary-hover transition"
-          >
-            ➕ Create Event
-          </Link>
+        
+        {/* Search Bar */}
+        <div className="max-w-2xl">
+          <SearchBar />
         </div>
       </div>
 
@@ -295,15 +303,18 @@ export default function EventsPage() {
                     <div className="flex items-center justify-between">
                       <span>Official UMass Boston Event</span>
                       {event.externalSource && (
-                        <a
-                          href={event.externalSource}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-primary hover:underline"
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (event.externalSource) {
+                              window.open(event.externalSource, '_blank', 'noopener,noreferrer');
+                            }
+                          }}
+                          className="text-primary hover:underline cursor-pointer bg-transparent border-none p-0"
                         >
                           View Details →
-                        </a>
+                        </button>
                       )}
                     </div>
                   ) : (
