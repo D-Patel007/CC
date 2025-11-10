@@ -7,6 +7,7 @@ import { rateLimit, RateLimits, getRateLimitIdentifier } from "@/lib/rate-limit"
 import { notifyNewMessage } from "@/lib/notifications"
 import { moderateText, shouldAutoReject } from "@/lib/moderation"
 import { sendNewMessageNotification } from "@/lib/email"
+import { createClient } from '@supabase/supabase-js'
 
 // GET /api/messages/[id] - Get all messages in a conversation
 export async function GET(
@@ -239,8 +240,20 @@ export async function POST(
           throw new Error('No supabaseId found for recipient');
         }
 
-        // Now fetch auth user using supabaseId (UUID)
-        const { data: recipientAuth, error: authError } = await supabase.auth.admin.getUserById(
+        // Create admin client with service role key to access auth.admin API
+        const supabaseAdmin = createClient(
+          process.env.SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false
+            }
+          }
+        );
+
+        // Now fetch auth user using supabaseId (UUID) with admin client
+        const { data: recipientAuth, error: authError } = await supabaseAdmin.auth.admin.getUserById(
           recipientProfile.supabaseId
         );
         
