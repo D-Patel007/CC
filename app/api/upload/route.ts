@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth-middleware"
 import { sbServer } from "@/lib/supabase/server"
 import { validateFileSize, validateImageFile, validateAudioFile, sanitizeFilename, checkRateLimit } from "@/lib/validation"
+import { detectNSFW } from "@/lib/nsfw-detection"
+import { sendContentFlaggedNotification } from "@/lib/email"
 
 const MAX_IMAGE_SIZE_MB = 5
 const MAX_AUDIO_SIZE_MB = 10
@@ -84,6 +86,96 @@ export async function POST(req: NextRequest) {
     const { data: { publicUrl } } = supabase.storage
       .from('message-media')
       .getPublicUrl(filePath)
+
+    // 🛡️ NSFW Detection for images
+    if (type === 'photo' || type === 'listing') {
+      console.log('🛡️ Running NSFW detection on uploaded image...');
+      console.log('   Image URL:', publicUrl);
+      console.log('   Type:', type);
+      
+      try {
+        const nsfwResult = await detectNSFW(publicUrl);
+        console.log('📊 NSFW Result:', {
+          isNSFW: nsfwResult.isNSFW,
+          confidence: nsfwResult.confidence,
+          categories: nsfwResult.categories,
+          shouldReject: nsfwResult.shouldReject,
+        });
+        
+        // Auto-reject if confidence >= 0.5 (lowered from 0.7 for stricter filtering)
+        if (nsfwResult.shouldReject || nsfwResult.confidence >= 0.5) {
+          console.log('❌ Image rejected - NSFW content detected');
+          
+          // Delete the uploaded file
+          await supabase.storage
+            .from('message-media')
+            .remove([filePath]);
+          
+          // Log rejected upload attempt to FlaggedContent
+          await supabase
+            .from('FlaggedContent')
+            .insert({
+              contentType: type === 'listing' ? 'listing' : 'profile', // 'photo' maps to profile
+              contentId: 0, // No content ID since upload was rejected
+              userId: user.id,
+              reason: `NSFW ${type} upload rejected: ${nsfwResult.categories.join(', ')}`,
+              severity: nsfwResult.confidence >= 0.7 ? 'high' : 'medium',
+              status: 'rejected',
+              source: 'auto',
+              details: {
+                nsfwScore: nsfwResult.confidence,
+                categories: nsfwResult.categories,
+                fileType: file.type,
+                fileName: file.name,
+                uploadType: type,
+                rejectedAt: new Date().toISOString(),
+              },
+            });
+          
+          // Send email notification to user about rejected upload
+          try {
+            const { data: userAuth } = await supabase.auth.admin.getUserById(user.id.toString())
+            const { data: userProfile } = await supabase
+              .from('Profile')
+              .select('name, emailNotifications, emailContentFlags')
+              .eq('id', user.id)
+              .single()
+
+            if (userAuth?.user?.email && userProfile &&
+                userProfile.emailNotifications !== false &&
+                userProfile.emailContentFlags !== false) {
+              await sendContentFlaggedNotification({
+                userEmail: userAuth.user.email,
+                userName: userProfile.name || 'User',
+                contentType: type === 'listing' ? 'listing' : 'profile',
+                contentTitle: `${type} image upload`,
+                reason: `NSFW content detected: ${nsfwResult.categories.join(', ')}`,
+                severity: nsfwResult.confidence >= 0.7 ? 'high' : 'medium',
+                dashboardUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/profile`
+              })
+            }
+          } catch (emailError) {
+            console.error('Failed to send NSFW rejection email:', emailError)
+          }
+          
+          return NextResponse.json({
+            error: 'Image contains inappropriate content and cannot be uploaded',
+            categories: nsfwResult.categories,
+            confidence: nsfwResult.confidence,
+          }, { status: 400 });
+        }
+        
+        if (nsfwResult.isNSFW) {
+          console.log('⚠️ Image flagged for review - possible NSFW');
+          // Could add to moderation queue here
+        } else {
+          console.log('✅ Image passed NSFW check');
+        }
+      } catch (nsfwError) {
+        console.error('❌ NSFW detection error:', nsfwError);
+        // Continue anyway - don't block uploads on detection errors
+      }
+    }
 
     return NextResponse.json({ 
       data: { 
