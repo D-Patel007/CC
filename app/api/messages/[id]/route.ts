@@ -221,24 +221,32 @@ export async function POST(
       try {
         console.log('🔍 Attempting to send email notification...');
         
-        // Fetch recipient's email and name from auth and profile
-        const { data: recipientAuth, error: authError } = await supabase.auth.admin.getUserById(
-          receiverId.toString()
-        );
-        
-        if (authError) {
-          console.error('❌ Failed to get recipient auth:', authError);
-        }
-        
+        // First get recipient's profile with supabaseId
         const { data: recipientProfile, error: profileError } = await supabase
           .from('Profile')
-          .select('name, emailNotifications, emailNewMessages')
+          .select('name, supabaseId, emailNotifications, emailNewMessages')
           .eq('id', receiverId)
           .single();
 
         if (profileError) {
           console.error('❌ Failed to get recipient profile:', profileError);
           console.log('💡 TIP: Did you run the supabase-email-preferences.sql migration?');
+          throw profileError;
+        }
+
+        if (!recipientProfile?.supabaseId) {
+          console.log('⚠️ Recipient has no supabaseId, skipping email');
+          throw new Error('No supabaseId found for recipient');
+        }
+
+        // Now fetch auth user using supabaseId (UUID)
+        const { data: recipientAuth, error: authError } = await supabase.auth.admin.getUserById(
+          recipientProfile.supabaseId
+        );
+        
+        if (authError) {
+          console.error('❌ Failed to get recipient auth:', authError);
+          throw authError;
         }
 
         console.log('📧 Email check:', {
