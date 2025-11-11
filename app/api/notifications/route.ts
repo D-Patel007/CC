@@ -95,8 +95,13 @@ export async function PATCH(req: NextRequest) {
     const { user } = authResult;
 
     const body = await req.json();
+    const notificationIdSchema = z
+      .union([z.string(), z.number()])
+      .transform((value) => Number(value))
+      .pipe(z.number().int().nonnegative());
+
     const schema = z.object({
-      notificationIds: z.array(z.string()).optional(),
+      notificationIds: z.array(notificationIdSchema).optional(),
       markAllAsRead: z.boolean().optional(),
     });
 

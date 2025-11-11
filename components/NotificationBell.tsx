@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useRealtimeNotifications } from '@/lib/hooks/useRealtimeNotifications';
 
 interface Notification {
-  id: string;
+  id: number;
   type: string;
   title: string;
   message: string;
@@ -17,33 +17,66 @@ interface Notification {
 }
 
 export default function NotificationBell() {
+  console.log('🔔 NotificationBell component rendered');
+  
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   // Get current user ID
   useEffect(() => {
+    console.log('🔍 Fetching user ID from /api/profile');
+    let isMounted = true;
+
     const fetchUserId = async () => {
       try {
         const res = await fetch('/api/profile');
+        if (!isMounted) return;
+
         if (res.ok) {
-          const data = await res.json();
-          setCurrentUserId(data.id);
+          const body = await res.json();
+          if (!isMounted) return;
+
+          const profile = body?.data;
+
+          if (profile?.id) {
+            console.log('✅ Got user ID:', profile.id);
+            setCurrentUserId(profile.id);
+          } else {
+            console.warn('⚠️ Profile payload missing id field:', body);
+            setCurrentUserId(null);
+          }
+        } else {
+          console.error('❌ Failed to fetch profile:', res.status);
+          setCurrentUserId(null);
         }
       } catch (error) {
-        console.error('Error fetching user ID:', error);
+        if (isMounted) {
+          console.error('❌ Error fetching user ID:', error);
+          setCurrentUserId(null);
+        }
       }
     };
+
     fetchUserId();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Use real-time notifications hook
-  const { notifications, unreadCount, setNotifications, setUnreadCount } = useRealtimeNotifications(currentUserId);
+  const {
+    notifications,
+    unreadCount,
+    setNotifications,
+    setUnreadCount,
+    isLoading,
+  } = useRealtimeNotifications(currentUserId);
 
   // Mark notification as read
-  const markAsRead = async (notificationId: string) => {
+  const markAsRead = async (notificationId: number) => {
     try {
       await fetch('/api/notifications', {
         method: 'PATCH',
@@ -153,7 +186,7 @@ export default function NotificationBell() {
 
           {/* Notifications List */}
           <div className="flex-1 overflow-y-auto bg-card">
-            {loading && notifications.length === 0 ? (
+            {isLoading && notifications.length === 0 ? (
               <div className="p-8 text-center text-foreground-secondary bg-card">
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
               </div>

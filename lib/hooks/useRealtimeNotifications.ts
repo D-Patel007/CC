@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { sb } from '@/lib/supabase/browser';
 
 interface Notification {
-  id: string;
+  id: number;
   type: string;
   title: string;
   message: string;
@@ -18,18 +18,24 @@ interface Notification {
 export function useRealtimeNotifications(userId: number | null) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!userId) {
       console.log('⚠️ useRealtimeNotifications: No userId provided');
+      setNotifications([]);
+      setUnreadCount(0);
+      setIsLoading(false);
       return;
     }
 
     console.log('🔔 useRealtimeNotifications: Starting for userId:', userId);
     const supabase = sb();
+    let isMounted = true;
 
     // Initial fetch
     const fetchNotifications = async () => {
+      setIsLoading(true);
       console.log('📥 Fetching notifications for userId:', userId);
       const { data, error } = await supabase
         .from('Notification')
@@ -37,6 +43,10 @@ export function useRealtimeNotifications(userId: number | null) {
         .eq('userId', userId)
         .order('createdAt', { ascending: false })
         .limit(10);
+
+      if (!isMounted) {
+        return;
+      }
 
       if (error) {
         console.error('❌ Error fetching notifications:', error);
@@ -46,6 +56,8 @@ export function useRealtimeNotifications(userId: number | null) {
         setNotifications(data);
         setUnreadCount(data.filter(n => !n.read).length);
       }
+
+      setIsLoading(false);
     };
 
     fetchNotifications();
@@ -65,11 +77,9 @@ export function useRealtimeNotifications(userId: number | null) {
           console.log('🔔 Realtime notification change:', payload);
 
           if (payload.eventType === 'INSERT') {
-            // Add new notification
             setNotifications(prev => [payload.new as Notification, ...prev].slice(0, 10));
             setUnreadCount(prev => prev + 1);
           } else if (payload.eventType === 'UPDATE') {
-            // Update existing notification
             setNotifications(prev =>
               prev.map(n => n.id === payload.new.id ? payload.new as Notification : n)
             );
@@ -77,7 +87,6 @@ export function useRealtimeNotifications(userId: number | null) {
               setUnreadCount(prev => Math.max(0, prev - 1));
             }
           } else if (payload.eventType === 'DELETE') {
-            // Remove deleted notification
             setNotifications(prev => prev.filter(n => n.id !== payload.old.id));
             if ((payload.old as any).read === false) {
               setUnreadCount(prev => Math.max(0, prev - 1));
@@ -88,9 +97,10 @@ export function useRealtimeNotifications(userId: number | null) {
       .subscribe();
 
     return () => {
+      isMounted = false;
       supabase.removeChannel(channel);
     };
   }, [userId]);
 
-  return { notifications, unreadCount, setNotifications, setUnreadCount };
+  return { notifications, unreadCount, setNotifications, setUnreadCount, isLoading };
 }
