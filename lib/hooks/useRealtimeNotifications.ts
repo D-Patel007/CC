@@ -20,12 +20,17 @@ export function useRealtimeNotifications(userId: number | null) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      console.log('⚠️ useRealtimeNotifications: No userId provided');
+      return;
+    }
 
+    console.log('🔔 useRealtimeNotifications: Starting for userId:', userId);
     const supabase = sb();
 
     // Initial fetch
     const fetchNotifications = async () => {
+      console.log('📥 Fetching notifications for userId:', userId);
       const { data, error } = await supabase
         .from('Notification')
         .select('*')
@@ -33,7 +38,11 @@ export function useRealtimeNotifications(userId: number | null) {
         .order('createdAt', { ascending: false })
         .limit(10);
 
-      if (!error && data) {
+      if (error) {
+        console.error('❌ Error fetching notifications:', error);
+      } else if (data) {
+        console.log('✅ Notifications fetched:', data.length, 'notifications');
+        console.log('📊 Unread count:', data.filter(n => !n.read).length);
         setNotifications(data);
         setUnreadCount(data.filter(n => !n.read).length);
       }
@@ -53,7 +62,7 @@ export function useRealtimeNotifications(userId: number | null) {
           filter: `userId=eq.${userId}`,
         },
         (payload) => {
-          console.log('Notification change:', payload);
+          console.log('🔔 Realtime notification change:', payload);
 
           if (payload.eventType === 'INSERT') {
             // Add new notification
