@@ -16,8 +16,12 @@ export default function LoginPage() {
     setIsLoading(true)
     setMsg("")
     
-    // Validate UMass Boston email domain
-    if (!email.toLowerCase().endsWith('@umb.edu')) {
+    // Validate UMass Boston email domain or admin Gmail
+    const emailLower = email.toLowerCase()
+    const isUmbEmail = emailLower.endsWith('@umb.edu')
+    const isAdminGmail = emailLower === 'ouldsfiyazachary@gmail.com'
+    
+    if (!isUmbEmail && !isAdminGmail) {
       setIsLoading(false)
       setMsg("Error: Please use your UMass Boston email address (@umb.edu)")
       return
@@ -134,8 +138,6 @@ export default function LoginPage() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="your.name001@umb.edu"
-                pattern=".*@umb\.edu$"
-                title="Please use your UMass Boston email address (@umb.edu)"
               />
               <p className="text-xs text-foreground-secondary mt-2">
                 ⚠️ Only UMass Boston students and staff can sign up
