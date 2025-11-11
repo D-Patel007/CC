@@ -1,4 +1,5 @@
 import { sbServer } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 
 interface CreateNotificationParams {
   userId: number;
@@ -11,6 +12,7 @@ interface CreateNotificationParams {
 
 /**
  * Helper function to create a notification for a user
+ * Uses service role to bypass RLS since we're creating notifications for other users
  */
 export async function createNotification(params: CreateNotificationParams) {
   try {
@@ -20,7 +22,19 @@ export async function createNotification(params: CreateNotificationParams) {
       title: params.title,
     });
     
-    const supabase = await sbServer();
+    // Use service role client to bypass RLS
+    // We need this because we're creating notifications for OTHER users
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+    
     const now = new Date().toISOString();
 
     const notificationData = {
