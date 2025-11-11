@@ -14,33 +14,50 @@ interface CreateNotificationParams {
  */
 export async function createNotification(params: CreateNotificationParams) {
   try {
+    console.log('🔔 createNotification called with params:', {
+      userId: params.userId,
+      type: params.type,
+      title: params.title,
+    });
+    
     const supabase = await sbServer();
     const now = new Date().toISOString();
 
+    const notificationData = {
+      userId: params.userId,
+      type: params.type,
+      title: params.title,
+      message: params.message,
+      relatedId: params.relatedId,
+      relatedType: params.relatedType,
+      read: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    console.log('📝 Inserting notification into database:', notificationData);
+
     const { data, error } = await supabase
       .from('Notification')
-      .insert({
-        userId: params.userId,
-        type: params.type,
-        title: params.title,
-        message: params.message,
-        relatedId: params.relatedId,
-        relatedType: params.relatedType,
-        read: false,
-        createdAt: now,
-        updatedAt: now,
-      })
+      .insert(notificationData)
       .select()
       .single();
 
     if (error) {
-      console.error('Error creating notification:', error);
+      console.error('❌ Database error creating notification:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
       return { error };
     }
 
+    console.log('✅ Notification created in database:', data);
     return { data };
   } catch (error) {
-    console.error('Unexpected error in createNotification:', error);
+    console.error('❌ Unexpected error in createNotification:', error);
     return { error };
   }
 }
@@ -54,7 +71,14 @@ export async function notifyNewMessage(
   messagePreview: string,
   conversationId: string
 ) {
-  await createNotification({
+  console.log('📬 Creating in-app notification:', {
+    recipientId,
+    senderName,
+    messagePreview: messagePreview.substring(0, 50),
+    conversationId
+  });
+  
+  const result = await createNotification({
     userId: recipientId,
     type: 'message',
     title: `New message from ${senderName}`,
@@ -62,6 +86,14 @@ export async function notifyNewMessage(
     relatedId: conversationId,
     relatedType: 'conversation',
   });
+  
+  if (result.error) {
+    console.error('❌ Failed to create notification:', result.error);
+  } else {
+    console.log('✅ Notification created successfully:', result.data?.id);
+  }
+  
+  return result;
 }
 
 /**

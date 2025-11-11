@@ -307,15 +307,27 @@ export async function sendNewMessageNotification(data: NewMessageNotificationDat
       ? `💬 ${data.senderName} messaged you about "${data.listingTitle}"`
       : `💬 ${data.senderName} sent you a message`;
     
-    await sgMail.send({
+    console.log('📤 Attempting to send email via SendGrid:', {
       to: data.recipientEmail,
       from: process.env.SENDGRID_FROM_EMAIL,
+      subject
+    });
+    
+    const response = await sgMail.send({
+      to: data.recipientEmail,
+      from: process.env.SENDGRID_FROM_EMAIL!,
       subject,
       html,
     });
+    
     console.log('✅ Message notification sent to:', data.recipientEmail);
-  } catch (error) {
+    console.log('📬 SendGrid response:', response);
+  } catch (error: any) {
     console.error('❌ Failed to send message notification:', error);
+    if (error.response) {
+      console.error('SendGrid error details:', error.response.body);
+    }
+    throw error;
   }
 }
 
