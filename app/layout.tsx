@@ -3,6 +3,7 @@ import UserButton from "@/components/UserButton"
 import Footer from "@/components/Footer"
 import ThemeToggle from "@/components/ThemeToggle"
 import NotificationBell from "@/components/NotificationBell"
+import AdminNavLink from "@/components/AdminNavLink"
 import ClientProviders from "@/components/ClientProviders"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <a href="/messages" className="hover:underline hover:text-primary">Messages</a>
                   <a href="/my" className="hover:underline hover:text-primary">My Listings</a>
                   <a href="/profile" className="hover:underline hover:text-primary">Profile</a>
+                  <AdminNavLink />
                 </nav>
               </div>
 

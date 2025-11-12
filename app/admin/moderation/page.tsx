@@ -149,12 +149,20 @@ export default function AdminModerationPage() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           🛡️ Moderation Dashboard
         </h1>
-        <button
-          onClick={() => router.push('/admin/prohibited-items')}
-          className="px-4 py-2 bg-gray-800 !text-white rounded-md hover:bg-gray-700 transition-colors font-medium"
-        >
-          Manage Prohibited Items
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => router.push('/admin/users')}
+            className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-background-secondary transition-colors"
+          >
+            User Management
+          </button>
+          <button
+            onClick={() => router.push('/admin/prohibited-items')}
+            className="px-4 py-2 bg-gray-800 !text-white rounded-md hover:bg-gray-700 transition-colors font-medium"
+          >
+            Manage Prohibited Items
+          </button>
+        </div>
       </div>
 
       {/* Stats Overview */}
