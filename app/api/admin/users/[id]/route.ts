@@ -4,14 +4,15 @@ import { requireFullAdmin, logAdminAction } from '@/lib/admin-middleware';
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireFullAdmin(req);
     if (authResult instanceof NextResponse) return authResult;
     const { admin } = authResult;
 
-    const targetId = Number(params.id);
+    const { id } = await context.params;
+    const targetId = Number(id);
     if (!Number.isInteger(targetId) || targetId <= 0) {
       return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
     }

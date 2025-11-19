@@ -181,7 +181,6 @@ function MessagesPageInner() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: '',
           messageType: 'PHOTO',
           mediaUrl: uploadData.data.url
         })
@@ -298,7 +297,6 @@ function MessagesPageInner() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: '',
           messageType: 'VOICE',
           mediaUrl: uploadData.data.url
         })
