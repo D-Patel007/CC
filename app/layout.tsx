@@ -43,7 +43,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
                 {/* Desktop Navigation */}
                 <nav className="hidden md:flex items-center gap-8">
-                  <a href="/" className="text-foreground hover:text-primary transition-colors font-medium">Marketplace</a>
+                  <a href="/" className="text-foreground hover:text-primary transition-colors font-medium">Home</a>
+                  <a href="/marketplace" className="text-foreground hover:text-primary transition-colors font-medium">Marketplace</a>
                   <a href="/events" className="text-foreground hover:text-primary transition-colors font-medium">Events</a>
                   <a href="/messages" className="text-foreground hover:text-primary transition-colors font-medium">Messages</a>
                   <a href="/profile" className="text-foreground hover:text-primary transition-colors font-medium">Profile</a>

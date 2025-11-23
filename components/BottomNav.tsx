@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const items = [
-  { href: '/', label: 'Marketplace', icon: '🏪' },
-  { href: '/my', label: 'My Listings', icon: '📦' },
+  { href: '/', label: 'Home', icon: '🏠' },
+  { href: '/marketplace', label: 'Marketplace', icon: '🏪' },
   { href: '/listings/new', label: 'Post', icon: '➕' },
   { href: '/profile', label: 'Profile', icon: '👤' },
 ]
