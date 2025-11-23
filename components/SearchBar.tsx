@@ -79,32 +79,45 @@ export default function SearchBar() {
 
   return (
     <div ref={searchRef} className="relative w-full">
-      <div className="relative">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search listings & events..."
-          className="w-full rounded-xl border-2 border-border bg-[var(--input-bg)] px-5 py-3.5 pl-14 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-subtle"
-        />
-        <svg
-          className="absolute left-4 top-4 h-6 w-6 text-muted-foreground"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+      <div className="relative flex gap-2">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search for textbooks, furniture, notes..."
+            className="w-full rounded-lg border border-border bg-[var(--input-bg)] px-5 py-3.5 pl-12 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
           />
-        </svg>
-        {isLoading && (
-          <div className="absolute right-4 top-4">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
-        )}
+          <svg
+            className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          {isLoading && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          className="bg-primary text-white px-6 py-3.5 rounded-lg font-medium hover:bg-primary-hover transition-colors whitespace-nowrap"
+          onClick={() => {
+            if (query.length >= 2) {
+              setIsOpen(true)
+            }
+          }}
+        >
+          Search
+        </button>
       </div>
 
       {/* Results Dropdown */}
