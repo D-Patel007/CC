@@ -31,16 +31,16 @@ export default function ListingCard({ listing }: ListingCardProps) {
   return (
     <Link
       href={`/listings/${listing.id}`}
-      className="group block rounded-xl border border-border bg-[var(--card-bg)] text-foreground shadow-subtle hover:shadow-float transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+      className="group block rounded-2xl bg-[var(--card-bg)] overflow-hidden transition-all duration-300 hover:shadow-lg"
     >
-      <div className="aspect-video w-full overflow-hidden bg-gradient-to-br from-[rgba(99,102,241,0.08)] via-[rgba(14,21,33,0.12)] to-[rgba(2,132,199,0.12)] relative">
+      <div className="aspect-[4/3] w-full overflow-hidden bg-[var(--background-secondary)] relative">
         {listing.isSold && (
-          <div className="absolute top-2 right-2 bg-error text-white text-xs font-bold px-3 py-1 rounded-full z-10 shadow-subtle">
+          <div className="absolute top-3 right-3 bg-error text-white text-xs font-bold px-3 py-1.5 rounded-full z-10 shadow-sm">
             SOLD
           </div>
         )}
         {imageCount > 1 && (
-          <div className="absolute top-2 left-2 bg-black/70 text-white text-xs font-medium px-2 py-1 rounded-full z-10 flex items-center gap-1">
+          <div className="absolute top-3 left-3 bg-black/70 text-white text-xs font-medium px-2.5 py-1 rounded-full z-10 flex items-center gap-1">
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
             </svg>
@@ -48,39 +48,31 @@ export default function ListingCard({ listing }: ListingCardProps) {
           </div>
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img 
-          src={displayImage} 
+        <img
+          src={displayImage}
           alt={altText}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" 
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
       </div>
-      <div className="p-4 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-2 font-semibold text-foreground group-hover:text-primary transition-colors flex-1">
-            {listing.title}
-          </h3>
-          <span className="whitespace-nowrap text-lg font-bold text-primary flex-shrink-0">
-            {price}
-          </span>
-        </div>
-        <p className="line-clamp-2 text-sm text-foreground-secondary leading-relaxed">
-          {listing.description}
-        </p>
-        <div className="flex items-center justify-between gap-2 pt-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            {listing.category && (
-              <span className="inline-block bg-[rgba(129,140,248,0.16)] text-primary text-xs font-medium px-2.5 py-1 rounded-full">
-                {listing.category.name}
-              </span>
-            )}
-            <span className="inline-block bg-[var(--background-secondary)] text-foreground-secondary text-xs font-medium px-2.5 py-1 rounded-full">
-              {listing.condition ?? 'Unknown'}
+      <div className="p-4 space-y-3">
+        {listing.category && (
+          <div className="inline-block">
+            <span className="bg-[var(--primary-light)] text-primary text-xs font-medium px-3 py-1 rounded-full">
+              {listing.category.name}
             </span>
           </div>
-          {listing.seller && 'isVerified' in listing.seller && listing.seller.isVerified && (
-            <VerifiedBadge isVerified={true} size="sm" />
-          )}
+        )}
+        <div className="space-y-1">
+          <h3 className="font-semibold text-lg text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+            {listing.title}
+          </h3>
+          <p className="text-xl font-bold text-primary">
+            {price}
+          </p>
         </div>
+        <p className="text-sm text-muted-foreground line-clamp-1">
+          {listing.condition ?? 'Unknown condition'}
+        </p>
       </div>
     </Link>
   )
