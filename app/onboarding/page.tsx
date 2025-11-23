@@ -23,6 +23,7 @@ export default function OnboardingPage() {
           const data = await res.json()
           // If they already have a name set, redirect to home
           if (data.data?.name) {
+            console.log('Profile found, redirecting...')
             router.push('/')
             return
           }
@@ -33,7 +34,10 @@ export default function OnboardingPage() {
         setChecking(false)
       }
     }
-    checkProfile()
+    
+    // Temporarily disabled to allow profile creation
+    // checkProfile()
+    setChecking(false)
   }, [router])
 
   async function handleSubmit(e: React.FormEvent) {

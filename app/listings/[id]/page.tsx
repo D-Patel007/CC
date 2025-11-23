@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import ImageCarousel from "@/components/ImageCarousel"
 import VerifiedBadge from "@/components/VerifiedBadge"
+import ReportButton from "@/components/ReportButton"
 
 type Listing = {
   id: number
@@ -205,7 +206,16 @@ export default function ListingDetailPage({ params }: PageProps) {
           {/* Details */}
           <div className="p-6 space-y-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2">{listing.title}</h1>
+              <div className="flex items-start justify-between gap-4 mb-2">
+                <h1 className="text-3xl font-bold flex-1">{listing.title}</h1>
+                {!isOwnListing && (
+                  <ReportButton 
+                    contentType="listing" 
+                    contentId={listing.id} 
+                    size="sm"
+                  />
+                )}
+              </div>
               <p className="text-3xl font-bold text-primary">{price}</p>
             </div>
 
@@ -266,13 +276,15 @@ export default function ListingDetailPage({ params }: PageProps) {
             {/* Actions */}
             <div className="border-t border-border pt-4 space-y-2">
               {!isOwnListing && !listing.isSold && (
-                <button 
-                  onClick={handleMessageSeller}
-                  disabled={actionLoading}
-                  className="w-full bg-primary text-white py-3 rounded-lg hover:bg-primary-hover transition font-medium shadow-subtle disabled:opacity-50"
-                >
-                  {actionLoading ? 'Opening conversation...' : '💬 Message Seller'}
-                </button>
+                <>
+                  <button 
+                    onClick={handleMessageSeller}
+                    disabled={actionLoading}
+                    className="w-full bg-primary text-white py-3 rounded-lg hover:bg-primary-hover transition font-medium shadow-subtle disabled:opacity-50"
+                  >
+                    {actionLoading ? 'Opening conversation...' : '💬 Message Seller'}
+                  </button>
+                </>
               )}
               
               {isOwnListing && (
@@ -313,23 +325,23 @@ export default function ListingDetailPage({ params }: PageProps) {
         <div className="border-t p-6 bg-gray-50">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <p className="text-gray-500">Posted</p>
+              <p className="text-foreground-secondary">Posted</p>
               <p className="font-medium">
                 {new Date(listing.createdAt).toLocaleDateString()}
               </p>
             </div>
             <div>
-              <p className="text-gray-500">Last Updated</p>
+              <p className="text-foreground-secondary">Last Updated</p>
               <p className="font-medium">
                 {new Date(listing.updatedAt).toLocaleDateString()}
               </p>
             </div>
             <div>
-              <p className="text-gray-500">Listing ID</p>
+              <p className="text-foreground-secondary">Listing ID</p>
               <p className="font-medium">#{listing.id}</p>
             </div>
             <div>
-              <p className="text-gray-500">Status</p>
+              <p className="text-foreground-secondary">Status</p>
               <p className="font-medium">
                 {listing.isSold ? "Sold" : "Available"}
               </p>

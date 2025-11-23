@@ -2,6 +2,8 @@ import "./globals.css"
 import UserButton from "@/components/UserButton"
 import Footer from "@/components/Footer"
 import ThemeToggle from "@/components/ThemeToggle"
+import NotificationBell from "@/components/NotificationBell"
+import AdminNavLink from "@/components/AdminNavLink"
 import ClientProviders from "@/components/ClientProviders"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -28,33 +30,37 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background text-foreground flex flex-col transition-colors">
         <ClientProviders>
           {/* Header (always visible) */}
-          <header className="sticky top-0 z-10 border-b border-border bg-[var(--background-elevated)] backdrop-blur">
-            <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 text-foreground">
-              <div className="flex items-center gap-4">
-                <a href="/" className="flex items-center gap-3">
-                  <img src="/logo.png" alt="Campus Connect" className="w-12 h-12 rounded-lg shadow-subtle" />
-                  <div className="font-semibold text-lg">
-                    <div className="text-foreground">Campus Connect</div>
-                    <div className="text-xs text-foreground-secondary">For Beacons, by Beacons</div>
-                  </div>
-                </a>
-                <nav className="hidden md:flex items-center gap-4 ml-6 text-sm text-foreground-secondary">
-                  <a href="/" className="hover:underline hover:text-primary">Marketplace</a>
-                  <a href="/events" className="hover:underline hover:text-primary">Events</a>
-                  <a href="/messages" className="hover:underline hover:text-primary">Messages</a>
-                  <a href="/my" className="hover:underline hover:text-primary">My Listings</a>
-                  <a href="/listings/new" className="hover:underline hover:text-primary">+ Create</a>
-                  <a href="/profile" className="hover:underline hover:text-primary">Profile</a>
-                </nav>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <ThemeToggle />
-                <div className="hidden sm:block">
-                  <UserButton />
+          <header className="sticky top-0 z-50 bg-[var(--background-elevated)] shadow-sm">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-16">
+                {/* Logo and Brand */}
+                <div className="flex items-center gap-3">
+                  <a href="/" className="flex items-center gap-2">
+                    <img src="/logo.png" alt="Campus Connect" className="w-10 h-10" />
+                    <span className="font-bold text-xl text-primary hidden sm:block">Campus Connect</span>
+                  </a>
                 </div>
-                <div className="sm:hidden">
-                  <a href="/login" className="rounded-full bg-primary px-3 py-1 text-white text-sm shadow-subtle hover:bg-primary-hover transition">Log in</a>
+
+                {/* Desktop Navigation */}
+                <nav className="hidden md:flex items-center gap-8">
+                  <a href="/" className="text-foreground hover:text-primary transition-colors font-medium">Marketplace</a>
+                  <a href="/events" className="text-foreground hover:text-primary transition-colors font-medium">Events</a>
+                  <a href="/messages" className="text-foreground hover:text-primary transition-colors font-medium">Messages</a>
+                  <a href="/profile" className="text-foreground hover:text-primary transition-colors font-medium">Profile</a>
+                  <AdminNavLink />
+                </nav>
+
+                {/* Right Side Actions */}
+                <div className="flex items-center gap-3">
+                  <a
+                    href="/listings/new"
+                    className="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-hover transition-colors shadow-sm hidden sm:block"
+                  >
+                    Post Listing
+                  </a>
+                  <ThemeToggle />
+                  <NotificationBell />
+                  <UserButton />
                 </div>
               </div>
             </div>

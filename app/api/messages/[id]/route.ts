@@ -4,6 +4,10 @@ import { requireAuth } from "@/lib/auth-middleware"
 import { canAccessConversation, canModifyMessage, assertAccess, assertOwnership, AuthorizationError } from "@/lib/authorization"
 import { validateRequest, createMessageSchema } from "@/lib/validation-schemas"
 import { rateLimit, RateLimits, getRateLimitIdentifier } from "@/lib/rate-limit"
+import { notifyNewMessage } from "@/lib/notifications"
+import { moderateText, shouldAutoReject } from "@/lib/moderation"
+import { sendNewMessageNotification } from "@/lib/email"
+import { createClient } from '@supabase/supabase-js'
 
 // GET /api/messages/[id] - Get all messages in a conversation
 export async function GET(
@@ -128,6 +132,28 @@ export async function POST(
 
     const { content, messageType, mediaUrl } = validation.data
 
+    // 🛡️ MESSAGE MODERATION (only for text messages)
+    if (messageType === 'TEXT' && content) {
+      const moderation = moderateText(content);
+      
+      if (shouldAutoReject(moderation)) {
+        console.log('❌ Message rejected - inappropriate content:', moderation);
+        return NextResponse.json({
+          error: 'Your message contains inappropriate or spam content',
+          reasons: moderation.reasons,
+        }, { status: 400 });
+      }
+      
+      // Log warnings for flagged content
+      if (moderation.flags.length > 0) {
+        console.log('⚠️ Message flagged:', {
+          userId: user.id,
+          conversationId,
+          flags: moderation.flags,
+        });
+      }
+    }
+
     const supabase = await sbServer()
     // Verify user is part of this conversation
     const { data: conversation, error: convError } = await supabase
@@ -173,6 +199,118 @@ export async function POST(
       .from('Conversation')
       .update({ updatedAt: new Date().toISOString() })
       .eq('id', conversationId)
+
+    // Send notification to recipient
+    const { data: senderProfile } = await supabase
+      .from('Profile')
+      .select('name')
+      .eq('id', user.id)
+      .single();
+    
+    if (senderProfile) {
+      // In-app notification
+      await notifyNewMessage(
+        receiverId,
+        senderProfile.name || 'Someone',
+        content || 'Sent a message',
+        conversationId.toString()
+      );
+    }
+
+    // Send email notification to recipient
+    if (senderProfile) {
+      try {
+        console.log('🔍 Attempting to send email notification...');
+        
+        // First get recipient's profile with supabaseId
+        const { data: recipientProfile, error: profileError } = await supabase
+          .from('Profile')
+          .select('name, supabaseId, emailNotifications, emailNewMessages')
+          .eq('id', receiverId)
+          .single();
+
+        if (profileError) {
+          console.error('❌ Failed to get recipient profile:', profileError);
+          console.log('💡 TIP: Did you run the supabase-email-preferences.sql migration?');
+          throw profileError;
+        }
+
+        if (!recipientProfile?.supabaseId) {
+          console.log('⚠️ Recipient has no supabaseId, skipping email');
+          throw new Error('No supabaseId found for recipient');
+        }
+
+        // Create admin client with service role key to access auth.admin API
+        const supabaseAdmin = createClient(
+          process.env.SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false
+            }
+          }
+        );
+
+        // Now fetch auth user using supabaseId (UUID) with admin client
+        const { data: recipientAuth, error: authError } = await supabaseAdmin.auth.admin.getUserById(
+          recipientProfile.supabaseId
+        );
+        
+        if (authError) {
+          console.error('❌ Failed to get recipient auth:', authError);
+          throw authError;
+        }
+
+        console.log('📧 Email check:', {
+          hasEmail: !!recipientAuth?.user?.email,
+          email: recipientAuth?.user?.email,
+          hasProfile: !!recipientProfile,
+          profileName: recipientProfile?.name,
+          emailNotifications: recipientProfile?.emailNotifications,
+          emailNewMessages: recipientProfile?.emailNewMessages
+        });
+
+        // Check if recipient wants email notifications
+        if (recipientAuth?.user?.email && recipientProfile &&
+            recipientProfile.emailNotifications !== false &&
+            recipientProfile.emailNewMessages !== false) {
+          console.log('✅ Conditions met, sending email to:', recipientAuth.user.email);
+          // For now, get listing context if available (optional enhancement for later)
+          const messagePreview = content 
+            ? (content.length > 100 ? content.substring(0, 100) + '...' : content)
+            : messageType === 'PHOTO' 
+            ? '📷 Photo' 
+            : messageType === 'VOICE' 
+            ? '🎤 Voice message' 
+            : 'New message';
+
+          await sendNewMessageNotification({
+            recipientEmail: recipientAuth.user.email,
+            recipientName: recipientProfile.name || 'there',
+            senderName: senderProfile.name,
+            listingTitle: '', // Could fetch related listing if needed
+            messagePreview,
+            conversationUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/messages?conversation=${conversationId}`
+          });
+          
+          console.log('✅ Email sent successfully to:', recipientAuth.user.email);
+        } else {
+          console.log('ℹ️ Email not sent. Reason:', {
+            noEmail: !recipientAuth?.user?.email,
+            noProfile: !recipientProfile,
+            notificationsDisabled: recipientProfile?.emailNotifications === false,
+            newMessagesDisabled: recipientProfile?.emailNewMessages === false
+          });
+        }
+      } catch (emailError) {
+        // Don't fail the request if email fails
+        console.error('❌ Failed to send email notification:', emailError);
+        if (emailError instanceof Error) {
+          console.error('Error details:', emailError.message);
+        }
+      }
+    }
 
     // Broadcast the new message to all clients listening to this conversation
     // Note: In production, you'd use Supabase Realtime or a message queue

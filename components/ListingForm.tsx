@@ -8,6 +8,7 @@ export default function ListingForm({ categories }: { categories: { id: number; 
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [isDragging, setIsDragging] = useState(false)
+  const [descriptionLength, setDescriptionLength] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -149,7 +150,19 @@ export default function ListingForm({ categories }: { categories: { id: number; 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
   <input name="title" placeholder="Title" required className="w-full rounded-xl border border-border bg-[var(--input-bg)] p-3 text-foreground placeholder:text-muted-foreground focus:border-primary" />
-  <textarea name="description" placeholder="Description" required className="w-full rounded-xl border border-border bg-[var(--input-bg)] p-3 text-foreground placeholder:text-muted-foreground focus:border-primary" rows={5} />
+      <div>
+        <textarea 
+          name="description" 
+          placeholder="Description" 
+          required 
+          onChange={(e) => setDescriptionLength(e.target.value.length)}
+          className="w-full rounded-xl border border-border bg-[var(--input-bg)] p-3 text-foreground placeholder:text-muted-foreground focus:border-primary" 
+          rows={5} 
+        />
+        <p className="mt-1 text-xs text-foreground-secondary">
+          {descriptionLength} / 5000 characters (minimum 10 required)
+        </p>
+      </div>
       
       <div className="grid grid-cols-2 gap-3">
   <input name="price" type="number" step="0.01" placeholder="Price (USD)" required className="rounded-xl border border-border bg-[var(--input-bg)] p-3 text-foreground placeholder:text-muted-foreground focus:border-primary" />

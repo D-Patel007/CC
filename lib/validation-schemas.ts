@@ -39,9 +39,29 @@ export const updateEventSchema = createEventSchema.partial()
 
 // Message schemas
 export const createMessageSchema = z.object({
-  content: z.string().min(1).max(2000).optional(),
+  content: z.string().max(2000).optional().nullable(),
   messageType: z.enum(["TEXT", "PHOTO", "VOICE"]).default("TEXT"),
   mediaUrl: z.string().url().optional().nullable(),
+}).superRefine((data, ctx) => {
+  const trimmedContent = data.content?.trim()
+
+  if (data.messageType === "TEXT") {
+    if (!trimmedContent) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["content"],
+        message: "Text messages must include content",
+      })
+    }
+  } else {
+    if (!data.mediaUrl) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["mediaUrl"],
+        message: `${data.messageType === "PHOTO" ? "Photo" : "Voice"} messages require a media attachment`,
+      })
+    }
+  }
 })
 
 export const createConversationSchema = z.object({

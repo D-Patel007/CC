@@ -9,12 +9,14 @@
     "start": "next start"
   },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.75.0",
     "cheerio": "^1.1.2",
     "next": "15.5.4",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "twilio": "^5.10.4",
     "zod": "^4.1.12"
   },
   "devDependencies": {

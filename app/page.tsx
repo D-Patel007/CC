@@ -1,6 +1,7 @@
 ﻿import { sbServer } from "@/lib/supabase/server"
 import ListingCard from "@/components/ListingCard"
 import CategoryTabs from "@/components/CategoryTabs"
+import SearchBar from "@/components/SearchBar"
 import type { Database } from "@/lib/supabase/databaseTypes"
 
 type Listing = Database['public']['Tables']['Listing']['Row']
@@ -81,23 +82,29 @@ export default async function Marketplace({
   }
 
   return (
-    <main className="min-h-screen pb-20">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(129,140,248,0.45),_transparent_60%)]" aria-hidden />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(14,116,144,0.28),_transparent_65%)]" aria-hidden />
-        <div className="relative mx-auto max-w-6xl px-6 py-12 rounded-3xl border border-border bg-[var(--background-elevated)] shadow-float">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-foreground animate-fade-in">
-            UMass Boston Marketplace
+    <main className="min-h-screen">
+      {/* Hero Section with Search */}
+      <section className="bg-[var(--background-secondary)] py-20">
+        <div className="mx-auto max-w-4xl px-4 text-center">
+          <h1 className="text-5xl md:text-6xl font-bold mb-4 text-primary">
+            The Campus Marketplace
           </h1>
-          <p className="text-lg md:text-xl text-foreground-secondary max-w-2xl">
-            Buy, sell, and trade with fellow Beacons. Discover a modern marketplace tailored to campus life.
+          <p className="text-lg md:text-xl text-muted-foreground mb-8">
+            Your one-stop shop to buy, sell, and connect with the university community.
           </p>
+
+          {/* Prominent Search Bar */}
+          <div className="max-w-2xl mx-auto">
+            <SearchBar />
+          </div>
         </div>
       </section>
 
-      <div className="mx-auto max-w-6xl px-6 py-8">
-  <CategoryTabs categories={categories} />
+      {/* Featured Listings Section */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+        <h2 className="text-3xl font-bold text-foreground mb-8">Featured Listings</h2>
+
+        <CategoryTabs categories={categories} />
 
         {listings.length === 0 ? (
           <div className="text-center py-16 text-foreground-secondary">

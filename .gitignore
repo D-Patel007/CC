@@ -9,3 +9,4 @@ prisma/dev.db
 Thumbs.db
 *.log
 .env.local
+tsconfig.tsbuildinfo
