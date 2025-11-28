@@ -227,115 +227,117 @@ export default function EventsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredEvents.map((event) => {
             const isOrganizer = event.organizer.id === currentUserId
             return (
             <div key={event.id} className="relative group">
               <Link
                 href={`/events/${event.id}`}
-                className="block rounded-xl border border-border bg-[var(--card-bg)] overflow-hidden hover:shadow-float transition"
+                className="block rounded-2xl border border-border bg-[var(--card-bg)] overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
               >
-              {/* Event Image */}
-              <div className="aspect-video bg-gradient-to-br from-[rgba(129,140,248,0.35)] via-[rgba(14,21,33,0.65)] to-[rgba(14,116,144,0.4)] relative overflow-hidden">
-                {event.imageUrl ? (
-                  <img
-                    src={event.imageUrl}
-                    alt={event.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white text-6xl">
-                    {event.isExternal ? '🏛️' : '📅'}
-                  </div>
-                )}
-                <div className="absolute top-2 right-2 flex gap-2">
-                  {event.isExternal && (
-                    <span className="bg-success text-white px-3 py-1 rounded-full text-xs font-bold shadow-subtle">
-                      🏛️ Official UMass
-                    </span>
-                  )}
-                  {event.category && !event.isExternal && (
-                    <span className="bg-[rgba(17,26,45,0.88)] backdrop-blur px-3 py-1 rounded-full text-xs font-medium text-foreground">
-                      {event.category}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Event Info */}
-                <div className="p-4 space-y-2">
-                <h3 className="font-bold text-lg line-clamp-2 text-foreground group-hover:text-primary transition">
-                  {event.title}
-                </h3>
-                
-                <p className="text-sm text-foreground-secondary line-clamp-2">
-                  {event.description}
-                </p>
-
-                <div className="space-y-1 text-sm pt-2">
-                  <div className="flex items-center gap-2 text-foreground-secondary">
-                    <span>📅</span>
-                    <span>{formatDate(event.eventDate)}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-foreground-secondary">
-                    <span>🕐</span>
-                    <span>
-                      {formatTime(event.startTime)}
-                      {event.endTime && ` - ${formatTime(event.endTime)}`}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-foreground-secondary">
-                    <span>📍</span>
-                    <span className="line-clamp-1">{event.location}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-foreground-secondary pt-1">
-                    <span>👥</span>
-                    <span>{event.attendeeCount} attending</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-border text-xs text-foreground-secondary">
-                  {event.isExternal ? (
-                    <div className="flex items-center justify-between">
-                      <span>Official UMass Boston Event</span>
-                      {event.externalSource && (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (event.externalSource) {
-                              window.open(event.externalSource, '_blank', 'noopener,noreferrer');
-                            }
-                          }}
-                          className="text-primary hover:underline cursor-pointer bg-transparent border-none p-0"
-                        >
-                          View Details →
-                        </button>
+                <div className="flex flex-col sm:flex-row gap-0 sm:gap-4 h-full">
+                  {/* Square Image Container */}
+                  <div className="relative w-full sm:w-48 h-48 flex-shrink-0 overflow-hidden bg-gradient-to-br from-[rgba(129,140,248,0.35)] via-[rgba(14,21,33,0.65)] to-[rgba(14,116,144,0.4)]">
+                    {event.imageUrl ? (
+                      <img
+                        src={event.imageUrl}
+                        alt={event.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white text-6xl">
+                        {event.isExternal ? '🏛️' : '📅'}
+                      </div>
+                    )}
+                    <div className="absolute top-2 right-2 flex gap-2">
+                      {event.isExternal && (
+                        <span className="bg-success text-white px-3 py-1 rounded-full text-xs font-bold shadow-subtle">
+                          🏛️ Official
+                        </span>
+                      )}
+                      {event.category && !event.isExternal && (
+                        <span className="bg-[rgba(17,26,45,0.88)] backdrop-blur px-3 py-1 rounded-full text-xs font-medium text-white">
+                          {event.category}
+                        </span>
                       )}
                     </div>
-                  ) : (
-                    <span>Organized by {event.organizer.name || "Anonymous"}</span>
-                  )}
+                  </div>
+
+                  {/* Content Area */}
+                  <div className="flex-1 p-4 sm:py-4 sm:pr-4 sm:pl-0 flex flex-col justify-center space-y-3">
+                    <h3 className="font-bold text-xl text-foreground line-clamp-2 group-hover:text-primary transition">
+                      {event.title}
+                    </h3>
+
+                    <p className="text-sm text-foreground-secondary line-clamp-2">
+                      {event.description}
+                    </p>
+
+                    <div className="space-y-1.5 text-sm">
+                      <div className="flex items-center gap-2 text-foreground-secondary">
+                        <span>📅</span>
+                        <span className="font-medium">{formatDate(event.eventDate)}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-foreground-secondary">
+                        <span>🕐</span>
+                        <span>
+                          {formatTime(event.startTime)}
+                          {event.endTime && ` - ${formatTime(event.endTime)}`}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-foreground-secondary">
+                        <span>📍</span>
+                        <span className="line-clamp-1">{event.location}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-foreground-secondary">
+                        <span>👥</span>
+                        <span>{event.attendeeCount} attending</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-border text-xs text-foreground-secondary">
+                      {event.isExternal ? (
+                        <div className="flex items-center justify-between">
+                          <span>Official UMass Boston Event</span>
+                          {event.externalSource && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (event.externalSource) {
+                                  window.open(event.externalSource, '_blank', 'noopener,noreferrer');
+                                }
+                              }}
+                              className="text-primary hover:underline cursor-pointer bg-transparent border-none p-0 font-medium"
+                            >
+                              View Details →
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <span>Organized by {event.organizer.name || "Anonymous"}</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </Link>
-            
-            {/* Delete Button (for organizers only, shows on hover) */}
-            {isOrganizer && !event.isExternal && (
-              <button
-                onClick={(e) => handleDeleteEvent(event.id, event.title, e)}
-                disabled={deletingEventId === event.id}
-                className="absolute top-2 left-2 bg-error text-white px-3 py-1 rounded-lg text-xs font-medium shadow-subtle opacity-0 group-hover:opacity-100 transition hover:opacity-90 disabled:opacity-50 z-10"
-                title="Delete event"
-              >
-                {deletingEventId === event.id ? "Deleting..." : "🗑️ Delete"}
-              </button>
-            )}
-          </div>
+              </Link>
+
+              {/* Delete Button (for organizers only, shows on hover) */}
+              {isOrganizer && !event.isExternal && (
+                <button
+                  onClick={(e) => handleDeleteEvent(event.id, event.title, e)}
+                  disabled={deletingEventId === event.id}
+                  className="absolute top-2 left-2 bg-error text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-subtle opacity-0 group-hover:opacity-100 transition hover:opacity-90 disabled:opacity-50 z-10"
+                  title="Delete event"
+                >
+                  {deletingEventId === event.id ? "Deleting..." : "🗑️ Delete"}
+                </button>
+              )}
+            </div>
           )})}
         </div>
       )}

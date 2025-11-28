@@ -148,7 +148,7 @@ export default async function Marketplace({
               <p className="text-lg">Try adjusting your filters or be the first to post an item!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {listings.map((listing) => (
                 <div key={listing.id} className="animate-fade-in">
                   <ListingCard listing={listing} />
