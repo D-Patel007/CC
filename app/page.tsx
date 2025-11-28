@@ -1,5 +1,6 @@
 import { sbServer } from "@/lib/supabase/server"
 import ListingCard from "@/components/ListingCard"
+import HorizontalScroll from "@/components/HorizontalScroll"
 import Link from "next/link"
 import type { Database } from "@/lib/supabase/databaseTypes"
 
@@ -34,7 +35,7 @@ export default async function HomePage() {
   try {
     const supabase = await sbServer()
 
-    // Fetch featured listings (latest 6)
+    // Fetch featured listings (latest 8 for horizontal scroll)
     const { data: listingsData, error: listingsError } = await supabase
       .from('Listing')
       .select(`
@@ -43,13 +44,13 @@ export default async function HomePage() {
       `)
       .eq('isSold', false)
       .order('createdAt', { ascending: false })
-      .limit(6)
+      .limit(8)
 
     if (!listingsError && listingsData) {
       featuredListings = listingsData
     }
 
-    // Fetch featured events (upcoming 6)
+    // Fetch featured events (upcoming 8 for horizontal scroll)
     const { data: eventsData, error: eventsError } = await supabase
       .from('Event')
       .select(`
@@ -69,7 +70,7 @@ export default async function HomePage() {
       `)
       .gte('eventDate', new Date().toISOString().split('T')[0])
       .order('eventDate', { ascending: true })
-      .limit(6)
+      .limit(8)
 
     if (!eventsError && eventsData) {
       featuredEvents = eventsData as any
@@ -96,158 +97,144 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen">
-      {/* Hero Section with Glass Card */}
-      <section className="relative py-24 px-4 overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/10">
-        {/* Decorative background elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-secondary/20 rounded-full blur-3xl"></div>
+    <main className="min-h-screen w-full">
+      {/* Hero Section with Campus Image Background */}
+      <section className="relative h-[85vh] w-full overflow-hidden">
+        {/* Campus Image Background - Add your campus.jpg to /public folder */}
+        <div className="absolute inset-0">
+          {/* Animated gradient background with decorative elements */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-secondary/20 animate-zoom-in" style={{ animationDuration: '1.2s' }}>
+            {/* Decorative circles */}
+            <div className="absolute top-20 left-10 w-96 h-96 bg-primary/30 rounded-full blur-3xl animate-float"></div>
+            <div className="absolute bottom-20 right-10 w-[32rem] h-[32rem] bg-secondary/30 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-accent/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
+          </div>
+          {/* Overlay gradient */}
+          <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/40 to-background"></div>
         </div>
 
-        <div className="relative mx-auto max-w-6xl">
-          {/* Glass Card/Banner */}
-          <div className="glass rounded-3xl p-12 md:p-16 text-center shadow-xl">
-            <h1 className="text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+        {/* Hero Content */}
+        <div className="relative h-full flex items-center justify-center px-6">
+          <div className="text-center max-w-5xl animate-slide-up" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+            <h1 className="text-6xl md:text-8xl font-bold mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent drop-shadow-lg">
               Campus Connect
             </h1>
-            <p className="text-2xl md:text-3xl text-foreground-secondary font-medium mb-8">
+            <p className="text-2xl md:text-4xl text-foreground font-medium mb-8">
               by Beacons, for Beacons
             </p>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10">
+            <p className="text-lg md:text-2xl text-foreground-secondary max-w-3xl mx-auto mb-12">
               Your all-in-one platform to buy, sell, discover events, and connect with the university community.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Link
                 href="/marketplace"
-                className="btn-primary text-lg px-8 py-4 rounded-xl inline-block"
+                className="group bg-primary hover:bg-primary-hover text-white text-lg px-10 py-5 rounded-2xl inline-block font-bold shadow-2xl hover:shadow-primary/50 hover:scale-105 transition-all"
               >
                 Browse Marketplace
+                <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
               </Link>
               <Link
                 href="/events"
-                className="bg-secondary hover:bg-secondary/90 text-white text-lg px-8 py-4 rounded-xl inline-block transition-all shadow-sm hover:shadow-md"
+                className="group bg-secondary hover:bg-secondary/90 text-white text-lg px-10 py-5 rounded-2xl inline-block font-bold shadow-2xl hover:shadow-secondary/50 hover:scale-105 transition-all"
               >
                 Explore Events
+                <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
               </Link>
             </div>
           </div>
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float">
+          <svg className="w-8 h-8 text-foreground-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
         </div>
       </section>
 
       {/* Featured Events Section */}
-      <section className="py-16 px-4 bg-[var(--background)]">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-4xl font-bold text-foreground">Featured Events</h2>
-            <Link
-              href="/events"
-              className="text-primary hover:text-primary-hover font-semibold flex items-center gap-2 transition-colors"
-            >
-              View All Events
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
+      <section className="py-20 bg-[var(--background)] w-full">
+        {featuredEvents.length === 0 ? (
+          <div className="text-center py-16 text-foreground-secondary px-6">
+            <div className="text-6xl mb-4">📅</div>
+            <p className="text-xl text-foreground mb-2">No upcoming events</p>
+            <p className="text-sm">Check back soon for new events!</p>
           </div>
-
-          {featuredEvents.length === 0 ? (
-            <div className="text-center py-16 text-foreground-secondary">
-              <div className="text-6xl mb-4">📅</div>
-              <p className="text-xl text-foreground mb-2">No upcoming events</p>
-              <p className="text-sm">Check back soon for new events!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredEvents.map((event) => (
-                <Link
-                  key={event.id}
-                  href={`/events/${event.id}`}
-                  className="group card hover:shadow-xl transition-all duration-300"
-                >
-                  {/* Event Image */}
-                  <div className="aspect-video w-full overflow-hidden rounded-lg mb-4 bg-[var(--background-secondary)]">
-                    {event.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={event.imageUrl}
-                        alt={event.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-6xl">
-                        📅
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Event Info */}
-                  <div className="space-y-3">
-                    {event.isExternal && (
-                      <span className="inline-block bg-accent/20 text-accent text-xs font-medium px-3 py-1 rounded-full">
-                        Official Event
-                      </span>
-                    )}
-                    <h3 className="font-bold text-xl text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                      {event.title}
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      {formatDate(event.eventDate)} • {formatTime(event.startTime)}
+        ) : (
+          <HorizontalScroll title="Featured Events" viewAllHref="/events">
+            {featuredEvents.map((event) => (
+              <Link
+                key={event.id}
+                href={`/events/${event.id}`}
+                className="group card min-w-[320px] md:min-w-[380px] flex-shrink-0 transition-all duration-300"
+              >
+                {/* Event Image */}
+                <div className="aspect-video w-full overflow-hidden rounded-xl mb-4 bg-[var(--background-secondary)]">
+                  {event.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={event.imageUrl}
+                      alt={event.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-6xl">
+                      📅
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      {event.location}
-                    </div>
+                  )}
+                </div>
+
+                {/* Event Info */}
+                <div className="space-y-3">
+                  {event.isExternal && (
+                    <span className="inline-block bg-accent/20 text-accent text-xs font-medium px-3 py-1 rounded-full">
+                      Official Event
+                    </span>
+                  )}
+                  <h3 className="font-bold text-xl text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                    {event.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {formatDate(event.eventDate)} • {formatTime(event.startTime)}
                   </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {event.location}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </HorizontalScroll>
+        )}
       </section>
 
       {/* Featured Listings Section */}
-      <section className="py-16 px-4 bg-[var(--background-secondary)]">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-4xl font-bold text-foreground">Featured Listings</h2>
-            <Link
-              href="/marketplace"
-              className="text-primary hover:text-primary-hover font-semibold flex items-center gap-2 transition-colors"
-            >
-              View All Listings
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
+      <section className="py-20 bg-[var(--background-secondary)] w-full">
+        {featuredListings.length === 0 ? (
+          <div className="text-center py-16 text-foreground-secondary px-6">
+            <div className="text-6xl mb-4">📦</div>
+            <p className="text-xl text-foreground mb-2">No listings yet</p>
+            <p className="text-sm">Be the first to post an item!</p>
           </div>
-
-          {featuredListings.length === 0 ? (
-            <div className="text-center py-16 text-foreground-secondary">
-              <div className="text-6xl mb-4">📦</div>
-              <p className="text-xl text-foreground mb-2">No listings yet</p>
-              <p className="text-sm">Be the first to post an item!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredListings.map((listing) => (
-                <div key={listing.id} className="animate-fade-in">
-                  <ListingCard listing={listing} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        ) : (
+          <HorizontalScroll title="Featured Listings" viewAllHref="/marketplace">
+            {featuredListings.map((listing) => (
+              <div key={listing.id} className="min-w-[280px] md:min-w-[340px] flex-shrink-0">
+                <ListingCard listing={listing} />
+              </div>
+            ))}
+          </HorizontalScroll>
+        )}
       </section>
 
       {/* Services Section */}
-      <section className="py-20 px-4 bg-gradient-to-br from-background via-primary/5 to-background">
+      <section className="py-20 px-6 bg-gradient-to-br from-background via-primary/5 to-background w-full">
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-foreground mb-4">Choose Your Plan</h2>
